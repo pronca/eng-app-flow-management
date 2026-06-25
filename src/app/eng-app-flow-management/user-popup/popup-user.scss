@@ -1,0 +1,179 @@
+.userPanelDialogContainer{
+  min-width:260px;
+  width:400px;
+}
+
+.userPanelButtonContainer{
+  align-items: center;
+  justify-content: center;
+}
+
+.user-box, .password-box {
+	  width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    align-items: left;
+    border-bottom: 1px solid lightgray;
+    padding-bottom: 5px;
+
+  .img {
+    width: 100px;
+    height: 100px;
+    font-size: 100px;
+  }
+
+  .user-header{
+    padding: 0.5em;
+    width: 100%;
+    min-height: 74px;
+
+    .name-container{
+      font-size: 1.5em;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+  }
+
+  .avatar-picture {
+    width: 100px;
+    height: 100px;
+  }
+  div.picture-preview-container {
+    height: inherit;
+    width: inherit;
+    overflow: hidden;
+    border-radius: 50%;
+  }
+  
+  .picture-preview-container img {
+    width: 100%;
+    height: 100%;
+    object-position: center;
+    object-fit: contain;
+    background-color: lightgrey;
+  }
+  
+  .user-avatar-container {
+    width: 50%;
+    height: 100%;
+    border-radius: 50%;
+    background-size: 100%;
+    background-repeat: no-repeat;
+    font-size: 90px;
+
+  }
+
+  
+}
+
+.long-word-break {
+  word-break: break-word;
+}
+
+:host /deep/ .account-avatar {
+  background-image: url("/module-resources/eng-app/assets/img/account_circle_black_180x180.png");
+}
+
+.label {
+  font-weight: bolder;
+}
+
+.user-profile-property-container{
+
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  width: 100%;
+  border-bottom: 1px solid lightgray;
+  line-height: 2.1em;
+  place-content: center;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+
+  .user-profile-property{
+    width:100%;
+  }
+}
+
+.versionLabel{
+  text-transform: capitalize;
+  font-size: 0.7em;
+  color: gray;
+  padding-top: 5px;
+}
+
+
+@media only screen and (max-width: 1590px) {
+  .userProfileButton {
+    padding-left: 1px;
+    padding-right:1px;
+    min-width:40px;
+  }
+}
+
+@media only screen and (max-width: 1100px) {
+  .userProfileButtonContainer {
+    flex-direction: column !important;
+  }
+
+  .label {
+    display: block;
+  }
+
+  .user-profile-property-container{
+    text-indent: 0;
+  }
+
+  .user-box{
+    flex-direction: column;
+  }
+}
+
+.userProfileComponent {
+  display: block;
+  width: 100%;
+  padding-bottom: 10px;
+}
+
+.password-box {
+  flex-direction: column;
+  min-height: 231px;
+}
+
+.bar-container{
+  position: relative;
+  height: 20px;
+  width: 100%;
+}
+
+.message-container{
+  font-size: 12px;
+  padding-left: 15px;
+  -webkit-padding-start: 15px;
+}
+
+.red{
+  color:red;
+}
+
+.green{
+  color:black;
+}
+div.picture-preview-container {
+  height: inherit;
+  width: inherit;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.picture-preview-container img {
+  width: 100%;
+  height: 100%;
+  object-position: center;
+  object-fit: contain;
+  background-color: lightgrey;
+}
+

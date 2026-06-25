@@ -1,0 +1,74 @@
+<div class="background">
+    
+    <!-- TABELLA -->
+    <table mat-table [dataSource]="dataSource">
+        <caption></caption>
+        <ng-container matColumnDef="extractionId">
+            <th *matHeaderCellDef mat-header-cell sticky > &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EXTRACTION ID </th>
+            <td *matCellDef="let element" mat-cell> {{element.extraction.id}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="sendDate">
+            <th *matHeaderCellDef mat-header-cell sticky > &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DATA INVIO </th>
+            <td *matCellDef="let element" mat-cell> {{dateConvert(element.sendDate)}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="returnDate">
+            <th *matHeaderCellDef mat-header-cell sticky > &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DATA RITORNO </th>
+            <td *matCellDef="let element" mat-cell> {{dateConvert(element.returnDate)}} </td>
+        </ng-container>
+
+        <!-- <ng-container matColumnDef="error">
+            <th *matHeaderCellDef mat-header-cell sticky > &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ERRORS </th>
+            <td *matCellDef="let element" mat-cell> {{element.error}} </td>
+        </ng-container> -->
+
+        <ng-container matColumnDef="status">
+            <th *matHeaderCellDef mat-header-cell sticky > &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;STATUS </th>
+            <td *matCellDef="let element" mat-cell>
+                <mat-icon (click)="showErrorDetails(element.error, element.state)"
+                [ngClass]="{'termiantako':element.state === 'KO'}"
+                matTooltip="{{statusTooltip(element.state)}}">{{statusIcon(element.state)}}</mat-icon>
+                <div *ngIf="element.state === 'KO'" class="number-circle"
+                    (click)="showErrorDetails(element.error, element.state)">
+                    {{errorDetails(element.error)}}
+                </div>
+            </td>        
+            </ng-container>
+
+        <ng-container matColumnDef="numPratiche">
+            <th *matHeaderCellDef mat-header-cell sticky > &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NUMERO PRATICHE</th>
+            <td *matCellDef="let element" mat-cell> {{element.numPratiche}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="flowView">
+            <th *matHeaderCellDef mat-header-cell sticky ></th>
+            <td *matCellDef="let element" mat-cell> 
+                <button mat-icon-button matTooltip="Visualizza Flusso" (click)= "goToFlowView()" [disabled]="element.numPratiche == 0 || element.numPratiche == null">
+                    <mat-icon>list</mat-icon>
+                </button>
+            </td>
+        </ng-container>
+
+        
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+
+        <tr mat-row *matRowDef="let element; columns: displayedColumns;"></tr>
+
+    </table>
+
+</div>
+    
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+</div>

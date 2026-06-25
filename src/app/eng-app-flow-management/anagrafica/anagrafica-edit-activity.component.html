@@ -1,0 +1,247 @@
+<div class="background">
+<mat-horizontal-stepper #stepper (selectionChange)="changeStep($event)" [linear]="isLinear">
+    <mat-step [stepControl]="firstFormGroup">
+        <ng-template matStepLabel>ANAGRAFICA</ng-template>
+        
+       
+            <mat-card class="anag-card">
+                <div class="eng-classic-form">
+                    
+
+
+                        <eng-text-field [readonly]="permissionEdit"  (change)="changeTab($event, 'id')" fxFlex='50' required="true" maxlength="100" label='AN_ID'
+                            property="id">
+                        </eng-text-field>
+
+                        <eng-text-field [readonly]="permissionEdit" (change)="changeTab($event, 'description')" fxFlex='50' [style.padding-bottom]="'25px'"
+                            required="true" maxlength="100" label='AN_DESC' property="description">
+                        </eng-text-field>
+
+                        <eng-select-field [readonly]="permissionEdit" (change)="changeTab($event, 'type')" [style.padding-bottom]="'25px'" fxFlex='50'
+                        required="true" label='AN_TYPE' [defaultValue]=valuee valueSet="typeTab-value-set@local" property="type">
+                        </eng-select-field>
+
+                        <eng-number-field (change)="changeTab($event, 'fieldNum')" [style.padding-bottom]="'25px'" fxFlex='50'
+                            label='AN_FIELDNUM' readonly="true"  property="fieldNum">
+                        </eng-number-field>
+                        
+           </div>
+			<!-- [defaultValue]=fieldNum -->
+        
+    </mat-card>
+
+    </mat-step>
+    <mat-step [stepControl]="secondFormGroup">
+        <ng-template matStepLabel>CAMPI</ng-template>
+
+        <div>
+            <mat-card class="example-card">
+                <mat-card-title>
+                    {{anagraficaTable.description}}&nbsp;({{anagraficaTable.id}})
+                </mat-card-title>
+
+                <div *ngFor="let anl of anagraficaTable.tabgenFields; index as i ">
+                    <mat-accordion>
+                        <mat-expansion-panel class="dettaglio">
+                            <mat-expansion-panel-header>
+                                <mat-panel-title class="mat-title">
+                                <b class="header-anl"> {{anl.description}}&emsp;{{anl.type}} </b>
+                                <b [hidden]=anl.pk></b>
+                                </mat-panel-title>
+                            </mat-expansion-panel-header>
+
+                            <div class="eng-classic-form">
+
+                                <eng-text-field (change)="change($event, i, 'description')" fxFlex='50' label='AN_DESC'
+                                    maxlength="256" required="true" [defaultValue]=anl.description [readonly]="checkReadOnly || permissionEdit"
+                                    property="anl.description">
+                                </eng-text-field>
+
+                                <eng-select-field (change)="change($event, i, 'type')" fxFlex='50' label='AN_TYPE'
+                                    maxlength="64" property="anl.type" [defaultValue]=anl.type [readonly]="checkReadOnly || permissionEdit"
+                                    valueSet="fieldtype-value-set@local">
+                                    <!-- valueSet="FieldTypeDTO@global"> -->
+                                </eng-select-field>
+
+                                <eng-text-field (change)="change($event, i, 'format')" fxFlex='50' label='AN_FORMAT'
+                                    maxlength="64" [defaultValue]=anl.format property="anl.format" [readonly]="checkReadOnly || permissionEdit">
+                                </eng-text-field>
+
+                                <eng-check-field (change)="change($event, i, 'pk')" label='AN_PRIMARY_KEY'
+                                    [defaultValue]=anl.pk property="anl.pk" [readonly]="checkReadOnly || permissionEdit">
+                                </eng-check-field>
+
+                                <eng-check-field (change)="change($event, i, 'nullable')" label='AN_NULLABLE'
+                                    [defaultValue]=anl.nullable property="anl.nullable" [readonly]="checkReadOnly || permissionEdit">
+                                </eng-check-field>
+
+                            </div>
+
+                            <button (click)="deleteField(i)" class="delete-button" *ngIf="this.isButtonVisible && !permissionEdit" mat-button>
+                                <mat-icon>delete_forever</mat-icon>
+                                Rimuovi campo
+                            </button>
+
+                        </mat-expansion-panel>
+
+                    </mat-accordion>
+                 
+                </div>
+
+            </mat-card>
+
+        </div>
+
+    </mat-step>
+    <mat-step [stepControl]="secondFormGroup">
+        <ng-template matStepLabel>VALORI</ng-template>
+
+        <!-- <mat-toolbar color="primary">
+            <span>{{anagraficaTable.description}}&nbsp;({{anagraficaTable.id}})</span>
+        </mat-toolbar> -->
+
+        <div class="filtri">
+            <mat-form-field class="form-campo">
+                <mat-label>Campi</mat-label>
+                <mat-select [(ngModel)]="selectedValue" (selectionChange)="refreshCombo($event)">
+                    <mat-option>
+
+                    </mat-option>
+                    <mat-option *ngFor="let campi of anagraficaTable.tabgenFields" [value]="campi">
+                        {{campi.description}}
+                    </mat-option>
+
+                </mat-select>
+
+            </mat-form-field>
+
+            <mat-form-field  class="form-campo">
+                    <mat-label>Valori</mat-label>
+                    <input matInput [(ngModel)]="selectText" (keydown.enter)="startSearch()">
+                   
+            </mat-form-field>
+
+            <mat-form-field class="fieldData">
+                <input [(ngModel)]="dateIn"
+                        [matDatepicker]="picker1"
+                        matInput placeholder="Data Abilitazione">
+                <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+                <mat-datepicker #picker1></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field class="fieldData">
+                <input [(ngModel)]="dateOut"
+                        [matDatepicker]="picker2"
+                        matInput placeholder="Data Disabilitazione">
+                <mat-datepicker-toggle [for]="picker2" matSuffix></mat-datepicker-toggle>
+                <mat-datepicker #picker2></mat-datepicker>
+            </mat-form-field>
+
+            <!-- <eng-date-field (change)="changeDateIn($event)"
+            fxFlex='50'
+            label='DT_ENABLE'
+            >
+        </eng-date-field>
+
+        <eng-date-field (change)="changeDateOut($event)"
+            fxFlex='50' 
+            label='DT_DISABLE'
+           >
+        </eng-date-field> -->
+
+            <button mat-button (click)="startSearch()" matTooltip="Cerca">
+                <mat-icon>search</mat-icon>
+            </button>
+
+            <button mat-button (click)="resetSearch()" matTooltip="Resetta filtri">
+                <mat-icon>delete_sweep</mat-icon>
+            </button>
+
+        </div>
+
+        <mat-chip-list aria-label="filter selection">
+            <mat-chip *ngFor="let field of filterGlob.parameter;index as i"  [removable]="removable" (removed)="remove(field,i)" >
+                {{field}}   
+                <mat-icon matChipRemove *ngIf="removable">cancel</mat-icon>
+
+            </mat-chip>
+            
+          </mat-chip-list>
+
+          <div class="example-container">
+            <div class="flowviewreps">
+
+                <table mat-table [dataSource]="dataSource" matSort (matSortChange)="sortData($event)">
+
+                    <div *ngFor="let field of anagraficaTable.tabgenFields; index as i ">
+                        <ng-container [matColumnDef]="field.description">
+                            <th mat-header-cell *matHeaderCellDef sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{field.description}}</th>
+                            <td mat-cell (click)="section($event, element)" *matCellDef="let element">
+                                {{element[field.description]}} </td>
+                        </ng-container>
+                    </div>
+                    <ng-container matColumnDef="enabledDate">
+                        <th mat-header-cell *matHeaderCellDef mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Data Abilitazione</th>
+                        <td mat-cell (click)="section($event, element)" *matCellDef="let element">
+                            {{element.enabledDate | date : "dd-MM-yyyy"}} </td>
+                    </ng-container>
+                    <ng-container matColumnDef="disabledDate">
+                        <th mat-header-cell *matHeaderCellDef mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Data Disabilitazione</th>
+                        <td mat-cell (click)="section($event, element)" *matCellDef="let element">
+                            {{element.disabledDate | date : "dd-MM-yyyy"}} </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="expandedDetail">
+                        <mat-cell *matCellDef="let detail">
+
+                        </mat-cell>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+
+                    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>   
+
+                    <!-- matRipple class="element-row" -->
+
+                    </table>
+
+                </div>
+           
+                
+        <mat-paginator [length]="totalItems"
+              [pageSize]="10"
+              [pageSizeOptions]="[5, 10, 25, 100]"
+              (page)="getServerData($event)"
+              >
+        </mat-paginator>
+
+    </div>
+
+        <div>
+            <input #fileUpload style="visibility: hidden" id="fileTabgenInput" name="file" type="file" ([value])="fName"
+                (change)="fileChanged($event)">
+        </div>
+        <div *ngIf="name && contents">
+            <h3>file {{name}} importato</h3>
+            <div *ngIf="contents">
+                {{ contents }}
+            </div>
+        </div>
+
+    </mat-step>
+
+</mat-horizontal-stepper>
+</div>
+
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+    </div>

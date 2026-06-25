@@ -1,0 +1,16 @@
+//@CODE_GEN#EngAppFlowManagementModule#START
+import { EngAppFlowManagementModule } from './eng-app-flow-management.module';
+
+export const EngAppFlowManagementModule_DESCRIPTOR = {
+    "version": "4.0.0-RC3",
+    "dependencies": [
+        {
+            "name": "EngAppModule",
+            "version": "^3.29.0",
+            "packageName": "eng-app"
+        }
+    ],
+    "serviceDependencies": []
+};
+EngAppFlowManagementModule['_ENG_APP_DESCRIPTOR'] = EngAppFlowManagementModule_DESCRIPTOR;
+//@CODE_GEN#EngAppFlowManagementModule#END

@@ -1,0 +1,60 @@
+<div class="flow-extract-field">
+
+    <mat-card class="drools-card">
+
+        
+        <mat-form-field>
+            <mat-label>Flussi</mat-label>
+            <mat-select [(ngModel)]="droolsFile.flowId" maxlength="100" required="true">
+                <mat-option *ngFor="let opt of flows"  [value]=opt.id  (click)= "initVersion(opt)">
+                    {{opt.name}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+            <mat-label>Versioni</mat-label>
+				<mat-select [(ngModel)]="droolsFile.versionId" [disabled]="isDisableVersion" maxlength="100" required="true">
+				<mat-option *ngFor="let fmversion of versions" [value]=fmversion.id (click)="selecteVersion(fmversion)">
+					{{fmversion.name}}
+				</mat-option>
+                </mat-select>
+        </mat-form-field>
+
+    
+    </mat-card>
+    
+</div>
+
+<div *ngIf="!this.flow || this.flow.flowType!=='AZIENDA'" class="uploaddroolsfilecontainer" (click)="droolsFileInput.click()" (drop)="uploadFile($event,'1')" (dragover)="allowDrop($event)">
+    <input hidden type="file" id='droolsFileInput' #droolsFileInput (change)="uploadClickFile($event.target.files,'1')">
+    <mat-icon id="orderNo"> cloud_upload</mat-icon>
+    <label id="orderName" > Carica un file di validazione</label>
+</div> 
+
+<div *ngIf="this.flow && this.flow.flowType==='AZIENDA'" >
+    <div class="uploaddroolsfilecontainer2" (click)="droolsFileInput.click()" (drop)="uploadFile($event,'1')" (dragover)="allowDrop($event)">
+        <input hidden type="file" id='droolsFileInput' #droolsFileInput (change)="uploadClickFile($event.target.files,'1')">
+        <mat-icon id="orderNo"> cloud_upload</mat-icon>
+        <label id="orderName" > Carica un file di validazione</label>
+    </div> 
+        
+    <div class="uploaddroolsfilecontainer2" (click)="droolsFileInput2.click()" (drop)="uploadFile($event,'2')" (dragover)="allowDrop($event)">
+        <input hidden type="file" id='droolsFileInput2' #droolsFileInput2 (change)="uploadClickFile($event.target.files,'2')">
+        <mat-icon id="orderNo"> cloud_upload</mat-icon>
+        <label id="orderName" > Carica un file di validazione trasversale</label>
+    </div> 
+</div>
+<div  class="files-list" *ngFor="let file of filenames;let i= index">
+    <p> {{ file }} </p>
+    <button class="delete-file" (click)="deleteAttachment(i)">
+            <mat-icon>delete</mat-icon>
+    </button>
+</div>
+    
+<div  class="files-list" *ngFor="let file of filenames2;let i= index">
+    <p> {{ file }} </p>
+    <button class="delete-file" (click)="deleteAttachment2(i)">
+            <mat-icon>delete</mat-icon>
+    </button>
+</div>

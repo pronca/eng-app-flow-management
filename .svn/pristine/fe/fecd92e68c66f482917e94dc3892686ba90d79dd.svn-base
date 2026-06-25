@@ -1,0 +1,167 @@
+
+<mat-toolbar class="row-filter">
+  
+  <div fxLayout fxLayoutAlign="center center">
+    <mat-form-field fxFlex="80%">
+      <mat-label>Filtro</mat-label>
+      <mat-select [(ngModel)]="selectedOption" (selectionChange) = "clearInput()">
+        <mat-option class="select-mat-option"></mat-option>
+        <mat-option class="select-mat-option" *ngFor="let item of optionColumns" [value]="item">{{item}}</mat-option>       
+      </mat-select>
+    </mat-form-field>
+    </div>
+    
+    <div fxLayout fxLayoutAlign="center center">
+      <mat-form-field fxFlex="80%" *ngIf="selectedOption !== 'Data Nascita'">
+        <input class="filter-input" [(ngModel)]="selectedText" matInput type="text"  (keydown.enter)="startSearch(selectedOption, selectedText)"  style = "font-size: 12pt;" >
+        <mat-placeholder class="placeholder">Valore</mat-placeholder>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field *ngIf="selectedOption === 'Data Nascita'" class="fieldData">
+      <input matInput   [(ngModel)]="selectedText"
+      [matDatepicker]="picker1"
+      matInput readonly >
+      <!-- {{$event.target.value}} -->
+      <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+      <mat-datepicker  #picker1></mat-datepicker>
+    </mat-form-field>
+   
+    <div class="prefix-icon ng-star-inserted">
+      <button mat-icon-button (click) = "startSearch(selectedOption, selectedText)"  >
+      <mat-icon 
+          class="mat-icon notranslate material-icons mat-icon-no-color ng-star-inserted" 
+          role="img"  
+          aria-hidden="true" >search
+          
+      </mat-icon>
+    </button> 
+    </div>    
+</mat-toolbar>
+
+<table class="as-table" id = "excel-table" (matSortChange)="sortData($event)" matSortDirection="asc" mat-table  [dataSource]="dataSource"  matSort matSortActive="created" matSortDisableClear >
+    <caption></caption>
+    <!-- Id Column -->
+    <ng-container matColumnDef="id" hidden = "true">
+      <th  mat-header-cell *matHeaderCellDef> Id </th>
+      <td  mat-cell *matCellDef="let element"> {{element.id}} </td>
+    </ng-container>
+  
+    <!-- Nome Column -->
+    <ng-container matColumnDef="nome">
+      <th class="as-table-nome" mat-header-cell *matHeaderCellDef mat-sort-header> Nome </th>
+      <td class="as-table-nome" mat-cell *matCellDef="let element"> {{element.nome}} </td>
+    </ng-container>
+  
+    <!-- Cognome Column -->
+    <ng-container matColumnDef="cognome" >
+      <th class="as-table-cognome" mat-header-cell *matHeaderCellDef mat-sort-header> Cognome </th>
+      <td class="as-table-cognome" mat-cell *matCellDef="let element"> {{element.cognome}} </td>
+    </ng-container>
+  
+    <!-- Datanascita Column -->
+    <ng-container matColumnDef="datanascita">
+      <th  mat-header-cell *matHeaderCellDef mat-sort-header> Data Nascita </th>
+      <td  mat-cell *matCellDef="let element"> {{element.datanascita | date: 'dd/MM/yyyy'}} </td>
+    </ng-container>
+
+    <!-- Comunenascita Column -->
+    <ng-container matColumnDef="comunenascita">
+        <th  mat-header-cell *matHeaderCellDef mat-sort-header> Comune Nascita </th>
+        <td  mat-cell *matCellDef="let element"> {{element.comunenascitaDescriptionField}} </td>
+    </ng-container>
+
+      <!-- Sesso Column -->
+    <ng-container matColumnDef="sesso">
+        <th  mat-header-cell *matHeaderCellDef mat-sort-header> Sesso </th>
+        <td  mat-cell *matCellDef="let element"> {{element.sessoDescrizione}} </td>
+    </ng-container>
+
+      <!-- Codice Fiscale Column -->
+    <ng-container matColumnDef="codiceFiscale">
+        <th  mat-header-cell *matHeaderCellDef mat-sort-header> Codice Fiscale </th>
+        <td  mat-cell *matCellDef="let element"> {{element.codiceFiscale}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="codicePaziente">
+        <th  mat-header-cell *matHeaderCellDef mat-sort-header> Codice Paziente </th>
+        <td  mat-cell *matCellDef="let element">  {{element.codicePaziente}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="comuneResidenza">
+      <th  mat-header-cell *matHeaderCellDef mat-sort-header> Comune Residenza</th>
+      <td  mat-cell *matCellDef="let element">{{element.comuneResidenzaDescriptionField}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="nazionalita">
+      <th  mat-header-cell *matHeaderCellDef mat-sort-header>Nazionalita</th>
+      <td  mat-cell *matCellDef="let element"> {{element.nazionalitaDescriptionField}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="aslResidenza">
+      <th  mat-header-cell *matHeaderCellDef mat-sort-header>Asl Residenza</th>
+      <td  mat-cell *matCellDef="let element">  {{element.aslResidenzaDescriptionField}}</td>
+    </ng-container>
+    
+    <ng-container matColumnDef="abilitazione">
+      <th  mat-header-cell *matHeaderCellDef mat-sort-header> Abilitazione </th>
+      <td  mat-cell *matCellDef="let element"> {{element.abilitazioneDescrizione}} </td>
+  </ng-container>
+    
+    <ng-container cdkColumnDef="buttons">
+		<th  mat-header-cell *matHeaderCellDef></th>
+		<td class="buttons " mat-cell *matCellDef="let element">
+      <div class="as-buttons">
+        <button matTooltip="{{editAna}}" mat-raised-button color = "primary" (click) ="openChildActivity(element)">Edit</button>&nbsp;
+        <button matTooltip="{{deleteAna}}" mat-raised-button color = "warn" (click) = "deleteAnagraficAssData(element)">Delete</button>
+      </div>
+    </td>
+    </ng-container>
+  
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+
+  <mat-toolbar color="primary" class="toolbarBottom">
+   
+    <button mat-icon-button (click)= "goToFirstPage()" 
+        [style.cursor] = "firstResultDisplay===1 ? 'default' : 'pointer'" 
+        [style.color]="firstResultDisplay===1 ? 'rgba(0,0,0,0.38)' : ''" 
+        matTooltip="Prima pagina" >
+        <mat-icon>first_page</mat-icon>
+    </button>
+  
+    <mat-icon (click)="getServerDataLeft()" 
+        [style.cursor] = "firstResultDisplay===1 ? 'default' : 'pointer'" 
+        [style.color]="firstResultDisplay===1 ? 'rgba(0,0,0,0.38)' : '' ">
+        keyboard_arrow_left
+    </mat-icon>
+        &nbsp;{{firstResultDisplay}} - {{endPage}}&nbsp;
+    <mat-icon (click)="getServerDataRight()"
+        [style.cursor] = "firstResultDisplay < endPage ? 'pointer' : 'default'" 
+        [style.color]="firstResultDisplay < endPage ? '' : 'rgba(0,0,0,0.38)'" >   
+        keyboard_arrow_right
+  </mat-icon>
+   
+    <button mat-icon-button (click)= "goToLastPage()"
+        [style.cursor] = "firstResultDisplay < endPage ? 'pointer' : 'default'" 
+        [style.color]="firstResultDisplay < endPage ? '' : 'rgba(0,0,0,0.38)'"  
+        matTooltip="Ultima pagina">
+        <mat-icon>last_page</mat-icon>
+    </button>
+
+</mat-toolbar>
+
+<div class="mask" *ngIf="showLoadingIndicator">
+  <div class="lds-roller" *ngIf="showLoadingIndicator">
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+  </div> 
+        

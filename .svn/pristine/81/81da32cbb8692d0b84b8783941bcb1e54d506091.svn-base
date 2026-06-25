@@ -1,0 +1,50 @@
+<div class="badge" [class.selected-item]="searchComponent.isItemSelected(item)" [ngClass]="getGlobalItemStyleValues()">
+
+    <div class="bend">
+
+    </div>
+
+    <div class="header" (click)="openChildActivity('Modifica',false)">
+        {{item.flow.name}}&nbsp;({{requestDate}})
+    </div>
+
+    <div class="content" (click)="openChildActivity('Modifica',false)">
+
+        <div *ngIf="mainImageValue" class="left-col">
+            <ng-container>
+
+                <!-- <mat-icon class="box-image" svgIcon="{{badgeIcon}}"></mat-icon> -->
+            </ng-container>
+        </div>
+
+        <div class="body">
+            <item-values-renderer renderStyle="COLUMN" [item]="item" [context]="getItemsRendererContext()"
+                [values]="badgeBodyValues">
+            </item-values-renderer>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="action">
+
+            <button [disabled]="playDisabled" matTooltip="Avvia estrazione" mat-button
+            (click)="play('play', request, item, $event)"><mat-icon>play_for_work</mat-icon></button>
+
+            <!-- <button  matTooltip="Cancella estrazione" mat-button
+            (click)="delete('delete', request, item, $event)"><mat-icon>delete</mat-icon></button> -->
+
+            <!-- <i matTooltip="Annulla estrazione" [ngClass]="getClass(request)"
+            (click)="cancel('cancel', request, item, $event)">cancel</i>
+
+            <i matTooltip="Cancella estrazione" [ngClass]="getClass(request)"
+            (click)="delete('delete', request, item, $event)">delete</i> -->
+        </div>
+    </div>
+
+    <div class="footer" *ngIf="hasActions()">
+        <item-actions [item]="item" [actions]="actions">
+        </item-actions>
+    </div>
+
+
+</div>

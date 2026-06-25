@@ -1,0 +1,532 @@
+import { AnagraficaAssistitoDTO } from './../flow-configuration/flow-configuration.model';
+import { Component,Input} from '@angular/core';
+import { Activity, ActivityManager,ConfirmDialog,ConfirmDialogButton,EditActivityComponent, SearchFilters, I18nService, Objects} from 'eng-app';
+import { FlowConfigurationService } from '../flow-configuration/flow-configuration.service';
+import { MatSnackBarConfig, MatTableDataSource } from '@angular/material';
+import {MatDialog} from '@angular/material';
+import { FormControl } from '@angular/forms';
+import { Observable, of as observableOf } from 'rxjs';
+import {map, startWith, take,catchError,debounceTime, switchMap} from 'rxjs/operators';
+import { DatePipe } from '@angular/common';
+
+
+@Component({
+    selector: 'anagrafica-assistito-edit',
+    templateUrl: './anagrafica-assistito-edit.component.html',
+    styleUrls: ['./anagrafica-assistito.component.scss']
+  })
+export class AnagraficaAssistitoEdit extends EditActivityComponent{
+  @Input() dataSource : MatTableDataSource<AnagraficaAssistitoDTO>;
+  recivedData : any;
+  isCompleted : boolean;
+  successMessage : string;
+  anagraficaAssistitoDTO :AnagraficaAssistitoDTO = new AnagraficaAssistitoDTO();
+  anagraficaAssistitoDTOs:AnagraficaAssistitoDTO[] = [];
+  extraParam : string;
+  selected : string = "0";
+  startDate : Date = new Date(1990, 0, 1);
+  isOpen=false;
+  anagraficaAssistitoDTOArr :AnagraficaAssistitoDTO[] = [];
+
+  searchComuneResidenzaCodiceField:string = '';
+  searchComuneResidenzaDescrizioneField:string = '';
+  searchComuneNascitaCodiceField:string = '';
+  searchComuneNascitaDescrizioneField:string = '';
+  searchAslResidenzaCodiceField:string = '';
+  searchAslResidenzaDescrizioneField:string = '';
+  searchNazionalitaCodiceField:string='';
+  searchNazionalitaDescrizioneField:string='';
+  searchComuneNascitaResults;
+  searchComuneResidenzaResults;
+  searchNazionalitaResults;
+  searchAslResidenzaResults;
+  searchComuneNascitaFormControl;
+  searchComuneNascitaInProgress;
+  searchComuneResidenzaFormControl;
+  searchComuneResidenzaInProgress;
+  searchNazionalitaFormControl;
+  searchNazionalitaInProgress;
+  searchAslResidenzaFormControl;
+  searchAslResidenzaInProgress;
+  showLoadingIndicator : boolean = false;
+
+  anagraficaSesso:Array<any> = [
+    {codice:'M',descrizione:'Maschio'},{codice:'F',descrizione:'Femmina'}
+  ];
+
+  anagraficaAbilitazione:Array<any> = [
+    {codice:1,descrizione:'Si'},{codice:0,descrizione:'No'}
+  ];
+
+  public stopAdvancedFilterEvent: boolean = false;
+  
+
+  constructor(
+    private datepipe: DatePipe,
+    private flowConfigurationService: FlowConfigurationService,
+    public activityManager : ActivityManager,
+    public dialog: MatDialog,
+    private i18nService: I18nService,
+    public activity: Activity){
+    super(); 
+  }
+
+  ngOnInit(){   
+    this.anagraficaAssistitoDTO = this.startingParams.editItem;
+    console.log("Extra params:: "+this.anagraficaAssistitoDTO.nome);
+    console.log("Input params:: ");
+    
+    this.initLookups();
+    this.loadLookups();
+    
+  }
+
+  /**
+   * Inizializzo le lookup e i campi dell'interfaccia utente
+   */
+  initLookups() {
+    this.addAdvancedFilterFormControl('searchComuneResidenza', 'COMUNI', ['COM_COD_ISTAT'], 'COM_DESCRIZIONE');
+    this.addAdvancedFilterFormControl('searchComuneNascita', 'COMUNI', ['COM_COD_ISTAT'], 'COM_DESCRIZIONE');
+    this.addAdvancedFilterFormControl('searchAslResidenza', 'AZIENDE_SANITARIE', ['COD_AZIENDA','COD_REGIONE'], 'DESCRIZIONE_BREVE');
+    this.addAdvancedFilterFormControl('searchNazionalita', 'NAZIONALITA', ['CODICE'], 'DESCRIZIONE');
+  }
+
+  /**
+   * Carico i dati dell'assistito nelle lookup
+   */
+  loadLookups() {
+
+    this['searchComuneResidenzaFormControl'].value = { 
+      id:this.anagraficaAssistitoDTO.comuneResidenza, 
+      codeADVF:this.anagraficaAssistitoDTO.comuneResidenzaCodeField, 
+      descriptionADVF:this.anagraficaAssistitoDTO.comuneResidenzaDescriptionField 
+    };
+
+    this['searchComuneNascitaFormControl'].value = { 
+      id:this.anagraficaAssistitoDTO.comunenascita, 
+      codeADVF:this.anagraficaAssistitoDTO.comunenascitaCodeField, 
+      descriptionADVF:this.anagraficaAssistitoDTO.comunenascitaDescriptionField 
+    };
+
+    this['searchNazionalitaFormControl'].value = { 
+      id:this.anagraficaAssistitoDTO.nazionalita, 
+      codeADVF:this.anagraficaAssistitoDTO.nazionalitaCodeField, 
+      descriptionADVF:this.anagraficaAssistitoDTO.nazionalitaDescriptionField 
+    };
+
+    this['searchAslResidenzaFormControl'].value = { 
+      id:this.anagraficaAssistitoDTO.aslResidenza, 
+      codeADVF:this.anagraficaAssistitoDTO.aslResidenzaCodeField, 
+      descriptionADVF:this.anagraficaAssistitoDTO.aslResidenzaDescriptionField 
+    };
+
+  }
+
+  /**
+   * Configurazione delle lookup (azienda residenza, comune nascita, comune residenza, etc..)
+   * @param filterName 
+   * @param tabgen 
+   * @param codeFields 
+   * @param descriptionField 
+   */
+  addAdvancedFilterFormControl(filterName, tabgen:string, codeFields:Array<string>, descriptionField:string) {
+    this[filterName + 'CodiceField'] = new Array<string>();
+    this.flowConfigurationService.searchTabgenFields(tabgen).then(responseF => {
+      for(let i=0; i<responseF.opTargetObject.items.length; i++){
+
+        for(let codeField in codeFields) {
+          if(responseF.opTargetObject.items[i].description == codeFields[codeField]){
+              this[filterName + 'CodiceField'].push(responseF.opTargetObject.items[i].tabgenValueColumn.toLowerCase());
+          }
+        }
+
+        if(responseF.opTargetObject.items[i].description == descriptionField){
+          this[filterName + 'DescrizioneField'] = responseF.opTargetObject.items[i].tabgenValueColumn.toLowerCase();
+        }
+      }
+
+    });
+    this[filterName + 'FormControl'] = new FormControl();
+    this[filterName + 'Results'] = [];
+    this[filterName + 'InProgress'] = false;
+    this[filterName + 'Selected'] = [];
+
+    this[filterName + 'FormControl'].valueChanges
+      .pipe(
+        debounceTime(500),
+        switchMap((value) => {
+
+            if(this.stopAdvancedFilterEvent) {
+              this.stopAdvancedFilterEvent = false;
+              return observableOf();
+            }
+
+            this[filterName + 'InProgress'] = (value != null);
+            this[filterName + 'Results'] = [];
+            this[filterName + 'Selected'] = [];
+
+            if (!value) {
+                return observableOf();
+            }
+
+            let filterGlob: SearchFilters = new SearchFilters();
+            filterGlob.tabgenId = tabgen;
+            filterGlob.limit = 50;
+            filterGlob.offset = 0;
+
+            if(!this[filterName + 'DescrizioneField'] || this[filterName + 'DescrizioneField'].length == 0) {
+              return observableOf();
+            }
+            
+            filterGlob.field = [ this[filterName + 'DescrizioneField'][0].toUpperCase() + this[filterName + 'DescrizioneField'].substring(1) ];
+            filterGlob.parameter = [ '%' + value.toString().toUpperCase() + '%' ];
+
+            filterGlob.field.push('CheckInclusion');
+            filterGlob.parameter.push(true);
+
+            filterGlob.field.push('IncludedEnabledDate');
+            filterGlob.field.push('IncludedDisabledDate');
+
+            if(this.anagraficaAssistitoDTO.datanascita) {
+              filterGlob.parameter.push(this.anagraficaAssistitoDTO.datanascita);
+
+              let nascita = new Date(this.anagraficaAssistitoDTO.datanascita.getTime());
+              nascita.setDate(nascita.getDate() + 1);
+              filterGlob.parameter.push(nascita);
+            } else {
+              let config = new MatSnackBarConfig();
+              config.duration = 5000;
+              this.activityManager.engApplication.notifyMessage("Senza la data di nascita, la ricerca mostrerà solo i record non dismessi", null, config);
+
+              var today = new Date();
+              today = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+              filterGlob.parameter.push(today);
+
+              let tomorrow = new Date(today.getTime());
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              filterGlob.parameter.push(tomorrow);
+            }
+            return this.flowConfigurationService.tabgenValueListSearchDataProvider(filterGlob).catch(response => {
+              return observableOf();
+            });
+          })
+        )
+        .subscribe(data => {
+            this[filterName + 'InProgress'] = false;
+            this[filterName + 'Results'] =  data.opTargetObject.items;
+            if(data.opTargetObject.items && data.opTargetObject.items.length > 0) {
+              data.opTargetObject.items.forEach(item => {
+                let codeFields:Array<string> = this[filterName + 'CodiceField'];
+                this.enrichLookup(item, codeFields, this[filterName + 'DescrizioneField']);
+              });
+            }
+        });
+  }
+
+  /**
+   * Aggiunge codice e descrizione alla lookup
+   * 
+   * @param item 
+   * @param codeFields 
+   * @param descriptionField 
+   */
+  enrichLookup(item:any, codeFields:Array<string>, descriptionField:string) {
+    item.codeADVF = '';
+    for(let codeField in codeFields) {
+      item.codeADVF += item[codeFields[codeField]];
+    }
+
+    item.descriptionADVF = item[descriptionField] + '(' + item.codeADVF + ')';
+  }
+
+  /**
+   * Renderer di un campo autocomplete
+   * @param item 
+   * @returns 
+   */
+  autocompleteDisplayFn(item?: any): string | undefined {
+    let display:string = '';
+    if(item) {
+      display = item.descriptionADVF;
+    }
+    return display;
+  }
+
+  initActivityActions(){
+    
+    this.activity.removeActivityAction(EditActivityComponent.SAVE_ACTION);
+    this.activity.removeActivityAction(EditActivityComponent.EDIT_ITEM);
+  }
+
+  onClose(){
+    this.activityManager.goBack();
+  }
+
+  onSave(anagraficaAssistitoDTOTmp : AnagraficaAssistitoDTO) : void{
+    
+    console.log("ITEM for save or update:  "+anagraficaAssistitoDTOTmp.abilitazione);
+    let anagraficaAssistitoDTO = new AnagraficaAssistitoDTO();
+    
+    this.showLoadingIndicator=true;
+    this.flowConfigurationService.saveAnagraficaAssistitoData(anagraficaAssistitoDTOTmp).then(response => {
+      if (response.success) {
+          this.successMessage = this.activityManager.engApplication.i18nInstant('!i18n#Operazione eseguita con successo');
+          this.activityManager.startRootActivity(this.activityDef);
+          this.activityManager.engApplication.notifyMessage(this.successMessage);
+          anagraficaAssistitoDTO = response.opTargetObject.anagraficaAsistitoDTO;
+          this.anagraficaAssistitoDTOs.push(anagraficaAssistitoDTO);
+          ///this.selected = anagraficaAssistitoDTO.abilitazione.toString();
+          this.isCompleted = true;
+          this.dataSource = new MatTableDataSource(this.anagraficaAssistitoDTOs);                    
+      } else {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore: flusso già presente in versione');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+      }
+      this.showLoadingIndicator=false;
+  }).catch((err) => {
+    console.log("Error:: "+err)
+    this.showLoadingIndicator=false;
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+  });
+      this.extraParam = '';
+      this.activityManager.goBack();
+    
+  }
+  /**
+   * filter data
+   * @param anagraficaAssistitoDTOTmp 
+   */
+  filterAnagraficaAssistitoData(anagraficaAssistitoDTOTmp : AnagraficaAssistitoDTO){
+    let comuneNascita = this['searchComuneNascitaFormControl'].value;
+    let comuneResidenza = this['searchComuneResidenzaFormControl'].value;
+    let aslResidenza = this['searchAslResidenzaFormControl'].value;
+    let nazionalita = this['searchNazionalitaFormControl'].value;
+
+    let filter = {
+      id:anagraficaAssistitoDTOTmp.id,
+      nome : anagraficaAssistitoDTOTmp.nome === null ? '' : anagraficaAssistitoDTOTmp.nome ,
+      cognome : anagraficaAssistitoDTOTmp.cognome === null ? '' : anagraficaAssistitoDTOTmp.cognome,
+      datanascita : anagraficaAssistitoDTOTmp.datanascita,
+      sesso : anagraficaAssistitoDTOTmp.sesso === null ? '':anagraficaAssistitoDTOTmp.sesso,
+      codiceFiscale : anagraficaAssistitoDTOTmp.codiceFiscale === null ? '' :anagraficaAssistitoDTOTmp.codiceFiscale,
+      codicePaziente : anagraficaAssistitoDTOTmp.codicePaziente === null ? '' :anagraficaAssistitoDTOTmp.codicePaziente,
+      //abilitazione : anagraficaAssistitoDTOTmp.abilitazione === null ? '' :this.selected,
+      abilitazione : anagraficaAssistitoDTOTmp.abilitazione === null ? '' :anagraficaAssistitoDTOTmp.abilitazione,
+      comuneResidenza: anagraficaAssistitoDTOTmp.comuneResidenza,
+      comunenascita:anagraficaAssistitoDTOTmp.comunenascita,
+      aslResidenza:anagraficaAssistitoDTOTmp.aslResidenza,
+      nazionalita:anagraficaAssistitoDTOTmp.nazionalita
+    }
+
+    filter.comunenascita = !comuneNascita || !comuneNascita.id ? filter.comunenascita: comuneNascita.id;
+    filter.aslResidenza = !aslResidenza || !aslResidenza.id ? filter.aslResidenza : aslResidenza.id;
+    filter.comuneResidenza = !comuneResidenza || !comuneResidenza.id ? filter.comuneResidenza : comuneResidenza.id;
+    filter.nazionalita = !nazionalita || !nazionalita.id ? filter.nazionalita : nazionalita.id;
+
+    this.searchAnagraficaAssistitoData(filter); 
+  }
+
+  /**
+   * search records based on filters
+   * @param filter 
+   * @param label 
+   * @param anagraficaAssistitoDTOTmp 
+   */
+  searchAnagraficaAssistitoData(filter){
+
+    // if(!!filter.id) {
+    //   this.onSave(filter);
+    //   return;
+    // }
+    this.showLoadingIndicator=true;  
+    this.flowConfigurationService.searchAllAnagraficaAssistitoData(filter).then(response => {
+      if (response.success) {
+        if (response.opTargetObject.error) {
+        } else {
+            this.anagraficaAssistitoDTOArr = response.opTargetObject.items;
+            if(this.anagraficaAssistitoDTOArr.length>0){
+              this.confirmationDialog(filter,this.anagraficaAssistitoDTOArr[0]);
+              console.log("ARRAYSIZE:: "+this.anagraficaAssistitoDTOArr.length)
+              this.successMessage = this.activityManager.engApplication.i18nInstant('!i18n#Operazione eseguita con successo');
+            }else{
+              this.onSave(filter);
+            }
+            console.log("Reee:: ")
+        }
+        this.showLoadingIndicator=false;
+    }else{
+      this.showLoadingIndicator=false;
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+    }
+  }).catch((err) => {
+    console.log("Error:: "+err)
+    this.showLoadingIndicator=false;
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+  });
+  
+  
+}
+
+  
+  validAnagraficaAssistitoDto(filter) : string {
+    let arr = Object.values(filter);
+    for(let element of arr){
+      if(element!='' && element!=null){
+        return '1';
+      }
+    }
+    return '0';
+  }
+
+  getLocalizedDate(date : Date): string {
+    let currentLocale = this.i18nService.getCurrentLocale();
+    return date!==null ? date.toLocaleDateString(currentLocale) : "";
+  }
+
+  confirmationDialog(anagraficaAssistitoDTOTmp:AnagraficaAssistitoDTO,anagraficaEsistente:any){
+    console.log("DAtaIN:"+anagraficaAssistitoDTOTmp.nome ); 
+
+    var _this = this;
+
+    let datanascitaString = '';
+    if(!!anagraficaEsistente.datanascita) {
+      datanascitaString = this.getLocalizedDate(anagraficaEsistente.datanascita);
+    }
+
+    this.askConfirmMessage
+    ('Aggiornamento anagrafica', 
+    ['I dati inseriti sono già associati ad una anagrafica: ' , 
+      (anagraficaEsistente.nome ? anagraficaEsistente.nome : '') + ' ' +
+      (anagraficaEsistente.cognome ? anagraficaEsistente.cognome : '')  + ' ' +
+      (anagraficaEsistente.datanascita ? datanascitaString : '') + ' ' ,
+      (anagraficaEsistente.comunenascitaDescriptionField ? anagraficaEsistente.comunenascitaDescriptionField : '') +
+      (anagraficaEsistente.codiceFiscale ? anagraficaEsistente.codiceFiscale : '')])
+    .then(function () {
+      // YES
+      anagraficaAssistitoDTOTmp.id = anagraficaEsistente.id;
+      _this.onSave(anagraficaAssistitoDTOTmp);
+      _this.anagraficaAssistitoDTOArr = []; 
+    },function () {
+      // NO
+      anagraficaAssistitoDTOTmp.id = null;
+      _this.onSave(anagraficaAssistitoDTOTmp);
+      _this.anagraficaAssistitoDTOArr = []; 
+    });
+
+  }
+
+  askConfirmMessage(title: string, message: string | string[]): Promise<any> {
+    return this.askMessage(title, message, [{
+        label: 'AGGIORNA_ANAGRAFICA',
+        style: "raised",
+        color: "primary",
+        confirmValue: true
+    }, {
+        label: 'INSERISCI_ANAGRAFICA',
+        color: "secondary",
+        confirmValue: false
+    }, {
+      label: 'ANNULLA_ANAGRAFICA',
+      color: "secondary",
+      confirmValue: null
+    }]);
+  }
+
+  askMessage(title: string, message: string | string[], buttons: ConfirmDialogButton[]): Promise<any> {
+    return new Promise((resolve, reject) => {
+        const dialogRef = this.dialog.open(ConfirmDialog, {
+            disableClose: true
+        });
+        dialogRef.componentInstance.title = title;
+        dialogRef.componentInstance.message = message;
+        dialogRef.componentInstance.buttons = buttons;
+        dialogRef.afterClosed().subscribe(result => {
+            if(result == null) {
+
+            } else if (result) {
+                resolve(result);
+            } else {
+                reject(null);
+            }
+        });
+    });
+  }
+
+  checkLookups() {
+    let message:string = null;
+
+    let nascita = this.anagraficaAssistitoDTO.datanascita;
+    
+    let comuneNascita = this['searchComuneNascitaFormControl'].value;
+    if(!this.checkLookup(comuneNascita, nascita)) {
+      this['searchComuneNascitaFormControl'].value = null;
+      message = 'Il comune di nascita selezionato non è abilitato rispetto alla data di nascita.';
+    }
+
+    let comuneResidenza = this['searchComuneResidenzaFormControl'].value;
+    if(!this.checkLookup(comuneResidenza, nascita)) {
+      this['searchComuneResidenzaFormControl'].value = null;
+      message = (!!message ? message : '') + 'Il comune di residenza selezionato non è abilitato rispetto alla data di nascita.';
+    }
+    
+    let aslResidenza = this['searchAslResidenzaFormControl'].value;
+    if(!this.checkLookup(aslResidenza, nascita)) {
+      this['searchAslResidenzaFormControl'].value = null;
+      message = (!!message ? message : '') + 'La Asl di residenza selezionata non è abilitata rispetto alla data di nascita.';
+    }
+    
+    
+    let nazionalita = this['searchNazionalitaFormControl'].value;
+    if(!this.checkLookup(nazionalita, nascita)) {
+      this['searchNazionalitaFormControl'].value = null;
+      message = (!!message ? message : '') + 'La nazionalità selezionata non è abilitata rispetto alla data di nascita.';
+    }
+
+    if(message) {
+      let config = new MatSnackBarConfig();
+      config.duration = 10000;
+      this.activityManager.engApplication.notifyMessage(message, null, config);
+    }
+  }
+
+  checkLookup(lookup:any, date:Date):boolean {
+    if(!lookup) {
+      return true;
+    }
+
+    let today : Date = new Date();
+    today = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+    
+    let res:boolean = true;
+    
+    let start:Date = null;
+    let end:Date = null;
+
+    if(!date) {
+      start = today;
+      end = new Date(start.getTime());
+      end.setDate(end.getDate() + 1);
+    } else {
+      start = new Date(date.getTime());
+      end = new Date(start.getTime());
+      end.setDate(end.getDate() + 1);
+    }
+
+    if(lookup.enabledDate) {
+      let enableDate:Date = lookup.enabledDate;
+      res = enableDate <= start;
+    }
+
+    if(res && lookup.disabledDate) {
+      let disabledDate:Date = lookup.disabledDate;
+      res = disabledDate >= end;
+    }
+
+    return res;
+  }
+  
+
+}

@@ -1,0 +1,27 @@
+<div *ngFor="let fk of flowtable.listFk; index as j" class="eng-classic-form">
+<mat-form-field class = "form-campo">
+        <mat-label>Campo 1</mat-label>
+        <mat-select>
+            <mat-option *ngFor="let fieldTable of flowtable.flowTableFieldList" [value]="fieldTable.name" >
+                {{fieldTable.name}}
+            </mat-option>
+        </mat-select>
+
+    </mat-form-field>
+
+
+    <mat-form-field class = "form-campo" >
+        <mat-label>Campo 2</mat-label>
+        
+                <mat-select>
+                    <mat-option   *ngFor="let fieldTableSelected of flowtableSelected.flowTableFieldList" [value]="fieldTableSelected.name">
+                   {{fieldTableSelected.name}}
+                    </mat-option>
+                </mat-select>
+
+              
+    </mat-form-field>
+    <button mat-button class="delete-button" (click)="deleteFk(j)">
+        <mat-icon>delete_forever</mat-icon>
+    </button>
+</div>

@@ -1,0 +1,16 @@
+@import 'theme-settings.scss';
+
+:host ::ng-deep {
+
+    .badge.selected-item {
+        background-color: $selection-color;
+        color: $selection-color-contrast;
+    }
+
+    .badge .header {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+     
+} 

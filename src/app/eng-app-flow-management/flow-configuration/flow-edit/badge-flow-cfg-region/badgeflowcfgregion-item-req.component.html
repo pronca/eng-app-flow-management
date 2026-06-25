@@ -1,0 +1,45 @@
+<div [class.selected-item]="searchComponent.isItemSelected(item)" [ngClass]="getGlobalItemStyleValues()" class="badge">
+
+    <div class="bend">
+
+    </div>
+
+    <div (click)="openChildActivity('Modifica',false)" class="header">
+        {{item.name}} {{versionNameValue}}
+    </div>
+
+    <div (click)="openChildActivity('Modifica',false)" class="content">
+
+        <div *ngIf="mainImageValue" class="left-col">
+            <ng-container>
+
+                <!-- <mat-icon class="box-image" svgIcon="{{badgeIcon}}"></mat-icon> -->
+            </ng-container>
+        </div>
+
+        <div class="body">
+            <item-values-renderer [context]="getItemsRendererContext()" [item]="item" [values]="badgeBodyValues"
+                                  renderStyle="COLUMN">
+            </item-values-renderer>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="action">
+            <button (click)="dashBoard('play', request, item, $event)"
+                    mat-button>
+                <mat-icon>dashboard</mat-icon>
+            </button>
+            <!--            <button matTooltip="Duplica Flusso" mat-button-->
+            <!--            (click)="duplica('play', request, item, $event)"><mat-icon>control_point_duplicate</mat-icon>-->
+            <!--            </button>-->
+        </div>
+    </div>
+
+    <div *ngIf="hasActions()" class="footer">
+        <item-actions [actions]="actions" [item]="item">
+        </item-actions>
+    </div>
+
+
+</div>

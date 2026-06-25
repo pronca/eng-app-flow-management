@@ -1,0 +1,1543 @@
+import { Component, EventEmitter, HostBinding, HostListener, Inject, Output, ViewChild, ViewEncapsulation } from '@angular/core';
+
+import { ActivityManager, EditActivityComponent, ValueSetsService, PageDef, EngApplication, ActivityActionType, Choice, Promises, SearchFilters } from 'eng-app';
+import { FlowConfigurationService } from "../flow-configuration.service";
+import { FormControl, FormGroup } from '@angular/forms';
+import {
+  Dashboard,
+  DashboardErrors,
+  DashboardPratiche,
+  FlowNative,
+  FlowTable,
+  FmFlow,
+  Header,
+  DashboardConfig,
+  FilterValid,
+  FilterFlowField,
+  ExtraFilterValueSet,
+  ExtraFilter,
+
+} from "../flow-configuration.model";
+//import { MomentDateAdapter } from "@angular/material-moment-adapter";
+import * as moment_ from 'moment';
+// import 'chartist-plugin-tooltips';
+import { BaseChartDirective } from 'ng2-charts';
+import {Subscription, timer} from 'rxjs';
+
+const moment = moment_;
+const today = new Date();
+
+// const Chartist = Chartist_;
+
+
+@Component({
+  selector: 'dashBoard-activity',
+  templateUrl: './dashBoard-activity.component.html',
+  styleUrls: ['./dashBoard-activity.component.scss'],
+
+  encapsulation: ViewEncapsulation.None,
+
+})
+
+
+export class DashBoardActivityComponent extends EditActivityComponent {
+  @ViewChild(BaseChartDirective,{ static: true }) chart: BaseChartDirective;
+  @ViewChild('errorsChart', { static: false }) errorsChart?: BaseChartDirective;
+  
+  download_ = false;
+  isLinear = false;
+  firstFormGroup: FormGroup;
+  flowTableList: FlowTable[] = [];
+  fmflow: FlowNative;
+  request: Request;
+  dashboard: Dashboard[] = [];
+  dashboardPratiche: DashboardPratiche[] = [];
+  dashboardErrors: DashboardErrors[] = [];
+
+  maxSize: number[] = [];
+  maxSizeError: number[] = [];
+
+
+  maxSizeScarto: number[] = [];
+  maxSizeErrorScarto: number[] = [];
+  lastUpdateScarto: String;
+
+  max: number;
+  maxError: number;
+  requestDate: String;
+  requestErrorDate: String;
+  errorsLabel: String = "Errori";
+  errorsValue: String = "0";
+  errorsTooltip: String = "";
+
+  praticheLabel: String = "Pratiche";
+  praticheValue: String = "0";
+  praticheTooltip: String = "";
+
+  praticheErrorsLabel: String = "Pratiche errate";
+  praticheErrorsValue: String = "0";
+  praticheErrorsTooltip: String = "";
+
+  anagraficheErrorsLabel: String;
+  anagraficheErrorsValue: number = 0;
+
+  datiCliniciErrorsLabel: String;
+  datiCliniciErrorsValue: number = 0;
+
+  ricaviTotaliLabel: String = "Ricavi totali";
+  ricaviTotaliValue: String = "0";
+
+  scartoDatiCliniciLabel: String;
+  scartoDatiCliniciValue: number = 0;
+
+  scartoAnagraficheLabel: String;
+  scartoAnagraficheValue: number = 0;
+
+  stringhetta: string;
+
+  errorLabelList: String[] = [];
+
+  visible: boolean = true;
+  visibleOld: boolean = false;
+
+  //valueFilterMonthFrom: number = 1;
+  valueFilterMonthFrom: number = new Date().getMonth() + 1;
+  valueFilterMonthTo: number = new Date().getMonth() + 1;
+  valueFilterMonth: number = (new Date().getMonth() + 1);
+  valueFilterYear: number = (new Date().getFullYear());
+  //valueFilterDateFrom = new Date(this.valueFilterYear, 0, 1, 0, 0, 0, 0); // 1 Gennaio anno in corso
+  valueFilterDateFrom = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0); // primo giorno del mese corrente
+  valueFilterDateTo   = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  canViewMonthFromToFilters: boolean = false;
+  canViewDateFromToFilters: boolean = false;
+  extraFilter: ExtraFilter[] = [];
+
+  dateFromPratiche: String;
+  dateToPratiche: String;
+
+  maxAnaCli: number;
+
+  series: any[];
+  visibleError: boolean = false;
+  visibleScarto: boolean = false;
+  visiblePratiche: boolean = false;
+
+  header: Header = new Header();
+
+  elementDashboard: DashboardConfig[] = [];
+  elementRegionDashboard: DashboardConfig[] = [];
+
+  ping = timer(10000, 10000);
+  sub: Subscription = new Subscription();
+
+  version: any;
+  file: any = [];
+  files: any = [];
+  choices: Choice[] = [];
+  choice: Choice = {
+    text: 'OK',
+    cssClass: '{text-align:center;}'
+};
+
+  @Output() onFileDropped = new EventEmitter<any>();
+  @HostBinding('style.background-color') background;
+  @HostBinding('style.opacity') opacity = '1';
+  constructor(
+    public engApplication: EngApplication,
+    private valueSetsService: ValueSetsService,
+    private flowConfigurationService: FlowConfigurationService,
+    private activityManager: ActivityManager,
+    @Inject('item') public item: FmFlow,
+  ) {
+    super();
+  }
+
+  initActivityActions() {
+    super.initActivityActions();
+    this.activity.removeActivityAction(EditActivityComponent.SAVE_ACTION);
+
+    this.activity.addActivityAction({
+      actionType: ActivityActionType.MAIN,
+      name: EditActivityComponent.SAVE_ACTION,
+      tooltip: "Annulla validazione e NON invia i risultati ai verticali",
+      icon: "undo",
+      fn: (activity, action) => {
+          this.resetValidation();  
+          return Promise.resolve(null);            
+      }
+    });
+
+    this.activity.addActivityAction({
+      actionType: ActivityActionType.MAIN,
+      name: EditActivityComponent.SAVE_ACTION,
+      tooltip: "Avvia Validazione trasversale",
+      icon: "done_all",
+      fn: (activity, action) => {
+          this.crossValidation();  
+          return Promise.resolve(null);            
+      }
+    });
+
+    this.activity.addActivityAction({
+      actionType: ActivityActionType.MAIN,
+      name: EditActivityComponent.SAVE_ACTION,
+      tooltip: "Valida / rivalida e invia i risulati ai verticali",
+      icon: "spellcheck",
+      fn: (activity, action) => {
+          this.firstValidation();
+      return Promise.resolve(null);                   
+      }
+    });
+
+   // this.getRegionBadge();
+  }
+
+  firstValidation() {
+    this.header.visible = true;
+    this.header.label = "Validazione in corso";
+    this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+    let filterValid : FilterValid = new FilterValid();
+
+    // filterValid.param = [this.valueFilterMonth.toString(),this.valueFilterYear.toString()];
+
+    let month : FilterFlowField = new FilterFlowField();
+    month.name = 'MONTH_RIF';
+    month.section = '0';
+    month.param = this.valueFilterMonth.toString();
+
+    let year : FilterFlowField = new FilterFlowField();
+    year.name = 'YEAR_RIF';
+    year.section = '0';
+    year.param = this.valueFilterYear.toString();
+
+    filterValid.field = [month,year];
+    filterValid.flowId = this.fmflow.id;
+
+    this.flowConfigurationService.validateRecords(filterValid)
+      .then(result => {
+          let resultVal = result.opTargetObject;
+
+          if (result.success) {
+            let validationId = resultVal.result;
+
+            this.sub = this.ping.subscribe((val) => {
+              this.checkValidation(validationId);
+            });            
+          } else {
+            this.activityManager.engApplication.notifyMessage('Errore in fase di gestione della richiesta di validazione');
+          }
+      })
+      .catch(e => {
+        this.header.visible = false;
+        this.header.label = "";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+        this.activityManager.engApplication.notifyMessage('Errore in fase di validazione');
+      }
+    );
+  }
+
+  checkValidation(validationId) {
+    this.flowConfigurationService.checkValidation(validationId).then(result => {
+      let resultVal = result.opTargetObject;
+      if(resultVal.result) {
+        this.header.visible = false;
+        this.header.label = "";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+        this.activityManager.engApplication.notifyMessage('Validazione terminata');
+        this.sub.unsubscribe();
+      }
+    }).catch(e => {
+      this.header.visible = false;
+      this.header.label = "";
+      this.activityManager.getCurrentPage().setPageMainObject(this.header);
+      this.sub.unsubscribe();
+      this.activityManager.engApplication.notifyMessage('Errore in fase di validazione');
+    });
+  }
+
+  crossValidation() {
+    this.header.visible = true;
+    this.header.label = "Validazione trasversale in corso";
+    this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+    let validationFilter = {
+      flowId : this.fmflow.id,
+      month : this.valueFilterMonth.toString(),
+      year : this.valueFilterYear.toString()
+    };
+
+    this.flowConfigurationService.crossValidation(validationFilter)
+    .then(result => {
+      let resultVal = result.opTargetObject;
+
+      if (result.success) {
+        let validationId = resultVal.result;
+
+        this.sub = this.ping.subscribe((val) => {
+          this.checkSecondLevelValidation(validationId);
+        });            
+      } else {
+          this.activityManager.engApplication.notifyMessage('Errore in fase di gestione della richiesta di validazione');
+          this.header.visible = false;
+          this.header.label = "";
+          this.activityManager.getCurrentPage().setPageMainObject(this.header);
+      }
+    })
+    .catch(e => {
+      this.header.visible = false;
+      this.header.label = "";
+      this.activityManager.getCurrentPage().setPageMainObject(this.header);
+      this.sub.unsubscribe();
+      this.activityManager.engApplication.notifyMessage('Errore in fase di gestione della richiesta di validazione');
+    }
+    );
+  }
+
+  checkSecondLevelValidation(validationId) {
+    this.flowConfigurationService.checkSecondLevelJob(validationId).then(result => {
+      let resultVal = result.opTargetObject;
+      if(resultVal.result) {
+        this.header.visible = false;
+        this.header.label = "";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+        this.activityManager.engApplication.notifyMessage('Validazione trasversale terminata');
+        this.sub.unsubscribe();
+      }
+    }).catch(e => {
+      this.header.visible = false;
+      this.header.label = "";
+      this.activityManager.getCurrentPage().setPageMainObject(this.header);
+      this.sub.unsubscribe();
+      this.activityManager.engApplication.notifyMessage('Errore in fase di validazione');
+    });
+  }
+
+  resetValidation() {
+    this.header.visible = true;
+    this.header.label = "Annullamento validazione in corso";
+    this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+    let validationFilter = {
+      flowId : this.fmflow.id,
+      month : this.valueFilterMonth.toString(),
+      year : this.valueFilterYear.toString()
+    };
+
+    this.flowConfigurationService.resetValidation(validationFilter)
+    .then(result => {
+      let resultVal = result.opTargetObject;
+
+      if (result.success) {
+        let validationId = resultVal.result;
+
+        this.sub = this.ping.subscribe((val) => {
+          this.checkResetValidation(validationId);
+        });            
+      } else {
+          this.activityManager.engApplication.notifyMessage('Errore in fase di gestione della richiesta di annullamento validazione');
+          this.header.visible = false;
+          this.header.label = "";
+          this.activityManager.getCurrentPage().setPageMainObject(this.header);
+      }
+    })
+    .catch(e => {
+      this.activityManager.engApplication.notifyMessage('Errore in fase di gestione della richiesta di annullamento');
+    }
+    );
+  }
+
+  checkResetValidation(validationId) {
+    this.flowConfigurationService.checkResetJob(validationId).then(result => {
+      let resultVal = result.opTargetObject;
+      if(resultVal.result) {
+        this.header.visible = false;
+        this.header.label = "";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+        this.activityManager.engApplication.notifyMessage('Annullamento validazione terminato');
+        this.sub.unsubscribe();
+      }
+    }).catch(e => {
+      this.header.visible = false;
+      this.header.label = "";
+      this.activityManager.getCurrentPage().setPageMainObject(this.header);
+      this.sub.unsubscribe();
+      this.activityManager.engApplication.notifyMessage('Errore in fase di annullamento validazione');
+    });
+  }
+
+  getAll() {
+    this.lineChartLabels2 = [];
+    this.visibleError = false;
+    this.visibleScarto = false;
+    this.visiblePratiche = false;
+
+    this.getDynamicBadge();
+    this.getDashboardForPratiche();
+    this.getDashboardForErrors();
+    
+  }
+
+
+  ngOnInit() {
+
+
+    this.activity.markDirty = () => { }
+
+
+    let starterParams: any = this.activity.startingParams;
+
+    if (starterParams.extra != null) {
+      this.valueFilterMonthFrom = starterParams.extra[1];
+      this.valueFilterMonthTo = starterParams.extra[2];
+    }
+
+    this.fmflow = starterParams.editItem;
+    ;
+
+    this.version = starterParams.editItem.version;
+    Promise.all([this.getExtraFilterValues(this.fmflow.name),
+    this.getCanViewMonthOrDateFromToFilters(this.fmflow.name)]).then(([list, data]) => {
+      this.getRegionBadge();
+    });
+    /* ----------==========     Daily Sales Chart initialization For Documentation    ==========---------- */
+
+
+    this.valueSetsService.registerLocalValueSet("month-value-set", [
+      {
+        code: 1,
+        display: "!i18n#Gennaio",
+      }, {
+        code: 2,
+        display: "!i18n#Febbraio",
+      }, {
+        code: 3,
+        display: "!i18n#Marzo",
+      }, {
+        code: 4,
+        display: "!i18n#Aprile",
+      }, {
+        code: 5,
+        display: "!i18n#Maggio",
+      }, {
+        code: 6,
+        display: "!i18n#Giugno",
+      }, {
+        code: 7,
+        display: "!i18n#Luglio",
+      }, {
+        code: 8,
+        display: "!i18n#Agosto",
+      }, {
+        code: 9,
+        display: "!i18n#Settembre",
+      }, {
+        code: 10,
+        display: "!i18n#Ottobre",
+      }, {
+        code: 11,
+        display: "!i18n#Novembre",
+      }, {
+        code: 12,
+        display: "!i18n#Dicembre",
+      }]);
+
+
+
+    var comboDate = new Date();
+
+    this.valueSetsService.registerLocalValueSet("year-value-set", [
+      {
+        code: (comboDate.getFullYear() - 3),
+        display: "!i18n#" + (comboDate.getFullYear() - 3).toString()
+      },
+      {
+        code: (comboDate.getFullYear() - 2),
+        display: "!i18n#" + (comboDate.getFullYear() - 2).toString()
+      },
+      {
+        code: (comboDate.getFullYear() - 1),
+        display: "!i18n#" + (comboDate.getFullYear() - 1).toString()
+      },
+      {
+        code: (comboDate.getFullYear()),
+        display: "!i18n#" + (comboDate.getFullYear()).toString()
+      },
+      {
+        code: (comboDate.getFullYear() + 1),
+        display: "!i18n#" + (comboDate.getFullYear() + 1).toString()
+      }
+
+
+    ]);
+
+
+  }
+
+  date = new FormControl(moment());
+
+
+
+
+  errorView(psAction: String, $event): void {
+
+    let startingParams: any = {};
+    startingParams.editItem = this.fmflow;
+    startingParams.editItem.extra = false;
+    if(this.valueFilterMonth<10){
+      startingParams.extraMonth = "0" + this.valueFilterMonth;
+    }else{
+      startingParams.extraMonth = this.valueFilterMonth;
+    }
+
+    startingParams.extraMonthFrom = this.valueFilterMonthFrom;
+    startingParams.extraMonthTo = this.valueFilterMonthTo;
+    startingParams.extraDateFrom = this.valueFilterDateFrom;
+    startingParams.extraDateTo = this.valueFilterDateTo;
+    startingParams.canViewMonthFromToFilters = this.canViewMonthFromToFilters;
+    startingParams.canViewDateFromToFilters = this.canViewDateFromToFilters;
+    startingParams.extraFilter = this.extraFilter;
+
+    startingParams.extraYear = this.valueFilterYear;
+    startingParams.region = undefined;
+    startingParams.dashboardName = "ERRORI";
+    this.activityManager.getCurrentPage().setPageMainObject(startingParams);
+    this.activityManager.startChildActivityByName("flow-error.edit", startingParams);
+  }
+
+  errorViewTop(psAction: String, $event): void {
+
+    let startingParams: any = {};
+    startingParams.editItem = this.fmflow;
+    startingParams.editItem.extra = true;
+    if(this.valueFilterMonth<10){
+      startingParams.extraMonth = "0" + this.valueFilterMonth;
+    }else{
+      startingParams.extraMonth = this.valueFilterMonth;
+    }
+
+    startingParams.extraMonthFrom = this.valueFilterMonthFrom;
+    startingParams.extraMonthTo = this.valueFilterMonthTo;
+    startingParams.extraDateFrom = this.valueFilterDateFrom;
+    startingParams.extraDateTo = this.valueFilterDateTo;
+    startingParams.canViewMonthFromToFilters = this.canViewMonthFromToFilters;
+    startingParams.canViewDateFromToFilters = this.canViewDateFromToFilters;
+    startingParams.extraFilter = this.extraFilter;
+
+    startingParams.extraYear = this.valueFilterYear;
+    startingParams.region = undefined;
+    startingParams.dashboardName = "ERRORI";
+    this.activityManager.getCurrentPage().setPageMainObject(startingParams);
+    this.activityManager.startChildActivityByName("flow-error.edit", startingParams);
+  }
+
+  viewPraticheTot(psAction: String, $event): void {
+
+    let starterParams: any = this.activity.startingParams;
+    starterParams.editItem = this.fmflow;
+    starterParams.editItem.extra = "pratiche_tot";
+    if(this.valueFilterMonth<10){
+      starterParams.extraMonth = "0" + this.valueFilterMonth;
+    }else{
+      starterParams.extraMonth = this.valueFilterMonth;
+    }
+    starterParams.extraMonthFrom = this.valueFilterMonthFrom;
+    starterParams.extraMonthTo = this.valueFilterMonthTo;
+    starterParams.extraDateFrom = this.valueFilterDateFrom;
+    starterParams.extraDateTo = this.valueFilterDateTo;
+    starterParams.canViewMonthFromToFilters = this.canViewMonthFromToFilters;
+    starterParams.canViewDateFromToFilters = this.canViewDateFromToFilters;
+    starterParams.extraFilter = this.extraFilter;
+
+    starterParams.extraYear = this.valueFilterYear;
+    starterParams.region = undefined;
+    starterParams.dashboardName = "PRATICHE";
+    this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+  }
+
+  viewPraticheErr(psAction: String, $event): void {
+
+    let starterParams: any = this.activity.startingParams;
+    starterParams.editItem = this.fmflow;
+    starterParams.editItem.extra = "pratiche_error";
+    if(this.valueFilterMonth<10){
+      starterParams.extraMonth = "0" + this.valueFilterMonth;
+    }else{
+      starterParams.extraMonth = this.valueFilterMonth;
+    }
+
+    starterParams.extraMonthFrom = this.valueFilterMonthFrom;
+    starterParams.extraMonthTo = this.valueFilterMonthTo;
+    starterParams.extraDateFrom = this.valueFilterDateFrom;
+    starterParams.extraDateTo = this.valueFilterDateTo;
+    starterParams.canViewMonthFromToFilters = this.canViewMonthFromToFilters;
+    starterParams.canViewDateFromToFilters = this.canViewDateFromToFilters;
+    starterParams.extraFilter = this.extraFilter;
+
+    starterParams.extraYear = this.valueFilterYear;
+    starterParams.region = undefined;
+    starterParams.dashboardName = "PRATICHE_ERRATE";
+    this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+  }
+
+
+  genericMethod(element: any, $event): void {
+
+    let starterParams: any = this.activity.startingParams;
+    starterParams.editItem = this.fmflow;
+    // starterParams.editItem.region2 = false;
+
+    if(this.valueFilterMonth<10){
+      starterParams.extraMonth = "0" + this.valueFilterMonth;
+    }else{
+      starterParams.extraMonth = this.valueFilterMonth;
+    }
+
+    starterParams.extraMonthFrom = this.valueFilterMonthFrom;
+    starterParams.extraMonthTo = this.valueFilterMonthTo;
+    starterParams.extraDateFrom = this.valueFilterDateFrom;
+    starterParams.extraDateTo = this.valueFilterDateTo;
+    starterParams.canViewMonthFromToFilters = this.canViewMonthFromToFilters;
+    starterParams.canViewDateFromToFilters = this.canViewDateFromToFilters;
+    starterParams.extraFilter = this.extraFilter;
+    
+    starterParams.extraYear = this.valueFilterYear;
+    starterParams.region = element.name;
+    starterParams.dashboardName = element.name;
+    if (element.name == "PRATICHE_NOT_SEND_REG") {
+      starterParams.editItem.extra = "pratiche_tot";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }else if(element.name == "PRATICHE_REG") {
+      starterParams.editItem.extra = "pratiche_tot";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }else if(element.name == "PRATICHE_RIC_REG") {
+      starterParams.editItem.extra = "pratiche_tot";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }else if(element.name == "PRATICHE_ERRATE_REG") {
+      starterParams.editItem.extra = "pratiche_error";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }else if(element.name == "ERRORI_REG") {
+      starterParams.editItem.extra = "error_reg";
+      this.activityManager.startChildActivityByName("flow-error.edit", starterParams);
+    }else if(element.name == "SEGNALAZIONI_REG") {
+      starterParams.editItem.extra = "segnalazioni_reg";
+      this.activityManager.startChildActivityByName("flow-error.edit", starterParams);
+    }else if(element.name == "PRATICHE_SEGNALAZIONI_REG") {
+      starterParams.editItem.extra = "pratiche_error";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }else if(element.name == "WARNING") {
+      starterParams.editItem.extra = "error_reg";
+      this.activityManager.startChildActivityByName("flow-error.edit", starterParams);
+    }else if(element.name == "PRATICHE_WARNING") {
+      starterParams.editItem.extra = "pratiche_error";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }else if (element.name == "PRATICHE_ERRATE_REG_AGG") {
+      starterParams.editItem.extra = "pratiche_error";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }else if (element.name == "PRATICHE_SEGNALAZIONI_REG_AGG") {
+      starterParams.editItem.extra = "pratiche_error";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }else if(element.name == "ERRORI_REG_AGG") {
+      starterParams.editItem.extra = "error_reg";
+      this.activityManager.startChildActivityByName("flow-error.edit", starterParams);
+    }else if(element.name == "SEGNALAZIONI_REG_AGG") {
+      starterParams.editItem.extra = "segnalazioni_reg";
+      this.activityManager.startChildActivityByName("flow-error.edit", starterParams);
+    } else {
+      //badge di default
+      starterParams.editItem.extra = "pratiche_tot";
+      this.activityManager.startChildActivityByName("pratica-flow.edit", starterParams);
+    }
+
+  }
+
+
+  getDashboard(): void {
+
+
+    this.ricaviTotaliValue = "0";
+    this.praticheErrorsValue = "0";
+    this.errorsValue = "0";
+    this.praticheValue = "0";
+    this.maxAnaCli = 0;
+    //   this.scartoAnagraficheValue = "0";
+    // this.scartoDatiCliniciValue = "0";
+
+    this.flowConfigurationService.getDashboardByFlow(this.fmflow.code, this.valueFilterMonth, this.valueFilterYear, 
+      this.extraFilter, this.canViewMonthFromToFilters, this.valueFilterMonthTo, this.valueFilterMonthFrom, this.canViewDateFromToFilters, this.valueFilterDateTo, this.valueFilterDateFrom)
+      .then(result => {
+        if (result.success) {
+          this.dashboard = result.opTargetObject.items;
+          if (this.dashboard!=null && this.dashboard.length>0) {
+            let myMoment = moment(this.dashboard[0].lastUpdate);
+            this.requestDate = myMoment.format('D MMM YYYY HH:mm');
+
+            for (let i = 0; i < this.dashboard.length; i++) {
+              if (this.dashboard[i].widgetName == "PRATICHE") {
+                this.praticheLabel = this.dashboard[i].label;
+                this.praticheValue = this.dashboard[i].value;
+                this.praticheTooltip = this.dashboard[i].tooltip;
+              }
+              if (this.dashboard[i].widgetName == "ERRORI") {
+                this.errorsLabel = this.dashboard[i].label;
+                this.errorsValue = this.dashboard[i].value;
+                this.errorsTooltip = this.dashboard[i].tooltip;
+              }
+              if (this.dashboard[i].widgetName == "PRATICHE_ERRATE") {
+                this.praticheErrorsLabel = this.dashboard[i].label;
+                this.praticheErrorsValue = this.dashboard[i].value;
+                this.praticheErrorsTooltip = this.dashboard[i].tooltip;
+              }
+              if (this.dashboard[i].widgetName == "ANAGRAFICHE_ERRATE") {
+                this.anagraficheErrorsLabel = this.dashboard[i].label;
+                this.anagraficheErrorsValue = Number(this.dashboard[i].value);
+              }
+              if (this.dashboard[i].widgetName == "DATI_CLINICI_ERRATI") {
+                this.datiCliniciErrorsLabel = this.dashboard[i].label;
+                this.datiCliniciErrorsValue = Number(this.dashboard[i].value);
+              }
+              if (this.dashboard[i].widgetName == "RICAVI_TOTALI") {
+                this.ricaviTotaliLabel = this.dashboard[i].label;
+                this.ricaviTotaliValue = this.dashboard[i].value;
+              }
+              if (this.dashboard[i].widgetName == "SCARTO_DATI_CLINICI") {
+                this.scartoDatiCliniciLabel = this.dashboard[i].label;
+                this.scartoDatiCliniciValue = Number(this.dashboard[i].value);
+                this.lineChartData.push(this.scartoDatiCliniciValue);
+
+              }
+              if (this.dashboard[i].widgetName == "SCARTO_ANAGRAFICHE") {
+                this.scartoAnagraficheLabel = this.dashboard[i].label;
+                this.scartoAnagraficheValue = Number(this.dashboard[i].value);
+                this.lineChartData.push(this.scartoAnagraficheValue);
+
+                let myMoment = moment(this.dashboard[i].lastUpdate);
+                this.lastUpdateScarto = myMoment.format('D MMM YYYY HH:mm');
+
+              }
+
+              for (let j = 0; j < this.elementDashboard.length; j++) {
+                if (this.dashboard[i].widgetName == this.elementDashboard[j].name) {
+                  this.elementDashboard[j].value = this.dashboard[i].value;
+                }
+              }
+
+              for (let j = 0; j < this.elementRegionDashboard.length; j++) {
+                if (this.dashboard[i].widgetName == this.elementRegionDashboard[j].name) {
+                  this.elementRegionDashboard[j].value = this.dashboard[i].value;
+                }
+              }
+
+            }
+          }
+
+          this.visibleScarto = true;
+          this.calculatePercent();
+
+        } else {
+          this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento delle dashboard');
+        }
+      })
+      .catch(e => {
+        this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento delle dashboard');
+      }
+      );
+  }
+
+
+
+
+
+  getDashboardForPratiche(): void {
+
+    this.flowConfigurationService.getDashboardProcedureByFlow(this.fmflow.name, this.extraFilter)
+      .then(result => {
+        if (result.success) {
+          this.dashboardPratiche = result.opTargetObject.items;
+          if (this.dashboardPratiche!=null && this.dashboardPratiche.length>0) {
+            this.lineChartData2.push(this.dashboardPratiche[0].day7);
+            this.lineChartData2.push(this.dashboardPratiche[0].day6);
+            this.lineChartData2.push(this.dashboardPratiche[0].day5);
+            this.lineChartData2.push(this.dashboardPratiche[0].day4);
+            this.lineChartData2.push(this.dashboardPratiche[0].day3);
+            this.lineChartData2.push(this.dashboardPratiche[0].day2);
+            this.lineChartData2.push(this.dashboardPratiche[0].day1);
+  
+            for (let i = 6; i >= 0; i--) {
+              this.lineChartLabels2.push(moment(this.dashboardPratiche[0].lastUpdate).subtract(i, 'd').format('DD/MM'));
+            }
+            this.dateToPratiche = moment(this.dashboardPratiche[0].lastUpdate).format('DD/MM');
+  
+  
+            this.visiblePratiche = true;
+          }
+        } else {
+          this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento del grafico pratiche');
+        }
+      })
+      .catch(e => {
+        this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento del grafico pratiche');
+      }
+      );
+  }
+
+  getDashboardForErrors(): void {
+    this.errorLabelList = [];
+    this.maxSizeError = [];
+    this.customDesc = [];
+    this.lineChartData3 = [];
+    this.lineChartLabels3 = [];
+    this.visibleError = false;
+
+    this.flowConfigurationService.getDashboardErrorsByFlow(
+      this.fmflow.name,
+      this.valueFilterMonth,
+      this.valueFilterYear,
+      this.extraFilter,
+      this.canViewMonthFromToFilters,
+      this.valueFilterMonthTo,
+      this.valueFilterMonthFrom,
+      this.canViewDateFromToFilters,
+      this.valueFilterDateTo,
+      this.valueFilterDateFrom
+    )
+    .then(result => {
+      if (!result.success) {
+        this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento del grafico top5errori');
+        return;
+      }
+
+      this.dashboardErrors = result.opTargetObject.items;
+
+      if (this.dashboardErrors && this.dashboardErrors.length > 0) {
+
+        const lu = this.dashboardErrors[0].lastUpdate;
+        this.requestErrorDate = lu ? moment(lu).format('D MMM YYYY HH:mm') : '';
+
+        for (let i = 0; i < this.dashboardErrors.length; i++) {
+          const count = Number(this.dashboardErrors[i].countError) || 0;
+
+          this.maxSizeError.push(count);
+          this.lineChartData3.push(count);
+
+          this.errorLabelList.push(`Errore ${i + 1}`);
+
+          const desc = this.dashboardErrors[i].description || '';
+          const wrapped = this.pushDescription(desc);
+          this.customDesc.push(wrapped[0]);
+        }
+
+        this.maxError = Math.max(...this.maxSizeError);
+        this.maxError = this.maxError + ((this.maxError / 100) * 10);
+
+        this.lineChartLabels3 = [...this.errorLabelList];
+
+        this.labelMFL3 = [{
+          data: [...this.lineChartData3],
+          label: this.SystemName3,
+          customDesc: [...this.customDesc]
+        }];
+
+        this.visibleError = true;
+        setTimeout(() => this.errorsChart && this.errorsChart.update(), 0);
+      }
+    })
+    .catch(() => {
+      this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento del grafico top5errori');
+    });
+  }
+
+
+  public lineChartData2: Array<number> = [];
+
+  public SystemName2: string = "Numero Pratiche";
+  firstCopy2 = false;
+
+  // data
+
+  public labelMFL2: Array<any> = [
+    {
+      data: this.lineChartData2,
+      label: this.SystemName2,
+    }
+  ];
+  // labels
+  public lineChartLabels2: Array<any> = [];
+
+
+  public lineChartOptions2: any = {
+    responsive: true,
+    scales: {
+      yAxes: [{
+        ticks: {
+          min: 0
+        }
+      }]
+
+      /*   xAxes: [{
+        //   min: this.dateFromPratiche, // how to? 
+         //  max:  this.dateToPratiche, // how to?
+           type: 'text',
+           /*time: {        
+             unit: 'day',
+             unitStepSize: 1,
+           
+           },
+           }],*/
+    },
+  };
+
+  _lineChartColors2: Array<any> = [{
+    backgroundColor: '#64B968',
+    borderColor: '#4BA64F',
+    pointBackgroundColor: '#4BA64F',
+    pointBorderColor: '#4BA64F',
+    pointHoverBackgroundColor: '#4BA64F',
+    pointHoverBorderColor: '#4BA64F'
+  }];
+
+
+
+  public lineChartType2 = 'line';
+
+
+
+
+
+
+
+  public lineChartType3 = 'bar';
+  public SystemName3: string = "Numero errori";
+  firstCopy3 = false;
+  customDesc: Array<any> = [];
+
+  // data
+  public lineChartData3: Array<number> = [];
+
+  public labelMFL3: Array<any> = [
+    {
+      data: this.lineChartData3,
+      label: this.SystemName3,
+      customDesc: this.customDesc
+    },
+
+  ];
+  // labels
+  public lineChartLabels3: Array<any> = [];
+
+
+  public lineChartOptions3: any = {
+    responsive: true,
+    scales: {
+      yAxes: [{
+        ticks: {
+          min: 0
+        }
+      }]
+
+
+    },
+
+    tooltips: {
+      position: 'average',
+      intersect: false,
+
+      callbacks: {
+        title: function(tooltipItem, data) {
+         var text =  new String([data.datasets[tooltipItem[0].datasetIndex].customDesc[tooltipItem[0].index]]);
+          //Return value for title
+          
+          return text
+      }
+
+ 
+      }
+    }
+  };
+
+  _lineChartColors3: Array<any> = [{
+    backgroundColor: '#E6514F',
+    borderColor: '#E63D39',
+
+  }];
+
+
+
+
+  public lineChartType = 'bar';
+  public SystemName: string = "Scarto Ricavi";
+  public percentDate: Array<any> = [];
+  firstCopy = false;
+
+  // data
+  public lineChartData: number[] = [];
+  public labelMFL: Array<any> = [
+    {
+      data: this.lineChartData,
+      label: this.SystemName,
+      percent: this.percentDate
+    }
+  ];
+  // labels
+  public lineChartLabels: Array<any> = ["Anagrafica", "Dati Clinici"];
+
+
+  public lineChartOptions: any = {
+    responsive: true,
+    scales: {
+      yAxes: [{
+        ticks: {
+          min: 0
+        }
+      }]
+
+
+    },
+
+    tooltip: {
+
+    },
+    tooltips: {
+
+      mode: 'x',
+      callbacks: {
+        label: function (tooltipItem, data) {
+          var label = data.datasets[tooltipItem.datasetIndex].label || '';
+
+          if (label) {
+            label += ': ';
+          }
+
+
+          label += tooltipItem.yLabel
+
+
+
+          label += data.datasets[tooltipItem.datasetIndex].percent[tooltipItem.index];
+          return label;
+        }
+      }
+    }
+  };
+
+  _lineChartColors: Array<any> = [{
+    backgroundColor: '#24C5D9',
+    borderColor: '#07B1C6',
+
+  }];
+
+
+  serachDashFilter($event, filter: ExtraFilter) {
+    if (this.extraFilter !== null) {
+      let select = this.extraFilter.filter(f => f.campo === filter.campo)[0];
+      if (select !== null) {
+        let index = this.extraFilter.indexOf(select);
+        select.selected = $event;
+        this.extraFilter[index] = select;
+      }
+    }
+  }
+
+  serachDashMFrom($event) {
+
+    this.valueFilterMonthFrom = $event;
+
+  }
+
+
+  serachDashMTo($event) {
+
+    this.valueFilterMonthTo = $event;
+
+  }
+
+  serachDashYFromTo($event) {
+
+    this.valueFilterYear = $event;
+
+  }
+
+  startSearch() {
+      this.lineChartData = [];
+      this.lineChartData3 = [];
+      this.getRegionBadge();
+  }
+
+  
+  serachDashY($event) {
+    this.valueFilterYear = $event;
+    var date = new Date();
+    if (this.valueFilterYear != date.getFullYear() || this.valueFilterMonth != (date.getMonth() + 1)) {
+      this.lineChartData = [];
+      this.lineChartData3 = [];
+      this.visible = false;
+      this.visibleOld = true;
+    } else {
+      this.lineChartData = [];
+      this.lineChartData3 = [];
+      this.visible = true;
+      this.visibleOld = false;
+    }
+
+    this.getAll();
+  }
+
+  serachDashM($event) {
+
+    this.valueFilterMonth = $event;
+    var date = new Date();
+    if (this.valueFilterMonth != (date.getMonth() + 1) || this.valueFilterYear != date.getFullYear()) {
+      this.lineChartData = [];
+      this.lineChartData3 = [];
+      this.visible = false;
+      this.visibleOld = true;
+      this.getRegionBadge();
+
+    } else {
+      this.lineChartData = [];
+      this.lineChartData3 = [];
+      this.visible = true;
+      this.visibleOld = false;
+      this.getAll();
+
+    }
+
+
+  }
+
+
+  downloadXLSXCheck(tipo: String, name: String){
+    if(!this.download_){
+      this.exportFileXLSX(tipo, name);
+    }
+    else{
+      this.activityManager.engApplication.notifyMessage('Download File XLS in corso, attendere il completamento');
+    }
+  }
+
+
+
+  exportFileXLSX(tipo: String, name: String) {
+    this.download_ = true;
+    this.header.visible = true;
+    this.header.label = "Donwloading XLS";
+
+    this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+    this.flowConfigurationService.downloadFlowErrorXlsx(this.fmflow, this.valueFilterMonth, this.valueFilterYear, tipo, name, this.valueFilterMonthFrom, this.valueFilterMonthTo, this.canViewMonthFromToFilters, this.canViewDateFromToFilters, this.valueFilterDateFrom, this.valueFilterDateTo).then(result => {
+      if (result.size > 0) {
+        var file = new Blob([result], { type: 'application/zip' });
+        var fileURL = URL.createObjectURL(file);
+        var anchor = document.createElement("a");
+        if (name=='PRATICHE_NOT_SEND_REG') {
+          anchor.download = "Pratiche NON inviate in Regione flusso " + this.fmflow.name; 
+        } else if (name=='PRATICHE_REG') {
+          anchor.download = "Pratiche Inviate A Regione flusso " + this.fmflow.name; 
+        } else if (name=='PRATICHE_RIC_REG') {
+          anchor.download = "Pratiche Riconosciute Da Regione flusso_ " + this.fmflow.name; 
+        } else if (name=='ERRORI') {
+          anchor.download = "Errori pratiche flusso " + this.fmflow.name; 
+        } else if (name=='ERRORI_REG') {
+          anchor.download = "Errori regionali flusso " + this.fmflow.name; 
+        } else if (name=='PRATICHE') {
+          anchor.download = "Pratiche flusso " + this.fmflow.name; 
+        } else if (name=='PRATICHE_ERRATE') {
+          anchor.download = "Pratiche Errate flusso " + this.fmflow.name; 
+        } else if (name=='PRATICHE_ERRATE_REG') {
+          anchor.download = "Pratiche Errate Regionali flusso " + this.fmflow.name; 
+        } else if (name=='PRATICHE_SEGNALAZIONI_REG') {
+          anchor.download = "Pratiche Segnalazioni Regionali flusso " + this.fmflow.name; 
+        } else {
+          anchor.download = name+"_"+this.fmflow.name; 
+        }
+        
+        anchor.href = fileURL;
+        anchor.click();
+        // window.open(fileURL);
+
+        this.header.visible = false;
+        this.header.label = "";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+        this.download_ = false;
+
+      } else {
+        this.activityManager.engApplication.notifyMessage('Nessun file presente');
+        this.download_ = false;
+      }
+    });
+
+  }
+
+  getDynamicBadge() {
+
+    let tipo = "AZIENDALE";
+
+    this.flowConfigurationService.getDashboardConfig(this.fmflow.id, tipo)
+      .then(result => {
+        if (result.success) {
+
+          this.elementDashboard = result.opTargetObject.items;
+          this.getDashboard();
+
+        }
+        else {
+          this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento dei badge dinamici');
+        }
+      });
+
+  }
+
+  getRegionBadge() {
+
+
+    let tipo = "REGIONALE";
+
+    this.flowConfigurationService.getDashboardConfig(this.fmflow.id, tipo)
+      .then(result => {
+        if (result.success) {
+
+          this.elementRegionDashboard = result.opTargetObject.items;
+          // this.getRegionValues();
+          this.getAll();
+
+        }
+        else {
+          this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento dei badge regionali');
+        }
+      });
+
+  }
+
+
+  calculatePercent() {
+    //this.percentDate = [];
+
+    if (this.scartoAnagraficheValue == 0 || Number(this.ricaviTotaliValue) == 0) {
+
+      this.percentDate.push(" ");
+
+    } else {
+      let percentAnag = Math.round((this.scartoAnagraficheValue) / Number(this.ricaviTotaliValue) * 100);
+      this.percentDate.push(" rispetto ai ricavi: " + percentAnag + "%");
+    }
+    if (this.scartoDatiCliniciValue == 0 || Number(this.ricaviTotaliValue) == 0) {
+      this.percentDate.push(" ");
+    } else {
+      let percentClinic = Math.round((this.scartoDatiCliniciValue) / Number(this.ricaviTotaliValue) * 100);
+      this.percentDate.push(" rispetto ai ricavi: " + percentClinic + "%");
+    }
+
+  }
+
+  isEditModeEdit(){
+    return false;
+}
+
+  pushDescription(desc: any): any[]{
+    let descArray: any[] = [];
+    descArray[0] = "";
+    let length = desc.length;
+    let p = 40;
+    let k = 0;
+    let q = 0;
+    let found: boolean = false;
+    while(!found){
+      let l = (length - k)/p;
+      if(l>1){
+        let space: boolean = false;
+        q = k;
+        while(!space){
+          if(desc[p+q] == " "){
+            let str = desc.substring(k,p+q);
+            str += "\n"
+            k = q+p;
+            descArray[0] += str;
+            space = true;
+          }
+          else{
+            q = q -1;
+            if((p+q)<=k){
+              let str = desc.substring(k,p+(k-1));
+              str += "_\n";
+              q=k;
+              k=p+(k-1);
+              descArray[0] += str;
+              space = true;
+            }
+          }
+        }
+      }else{
+        let str = desc.substring(k,length);
+        descArray[0] += str;
+        found = true;
+      }
+    }
+    return descArray;
+  }
+  
+refreshMask(){
+  if (this.canViewMonthFromToFilters || this.canViewDateFromToFilters) {
+    this.getRegionBadge();
+  } else {
+    this.getAll();
+  }
+}
+
+onResume(){
+  if (this.canViewMonthFromToFilters || this.canViewDateFromToFilters) {
+    this.getRegionBadge();
+  } else {
+    this.getAll();
+  }
+}
+
+ //Dragover listener
+ @HostListener('dragover', ['$event']) onDragOver(evt) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  // this.background = '#9ecbec';
+  this.opacity = '0.8'
+}
+
+//Dragleave listener
+@HostListener('dragleave', ['$event'])
+public onDragLeave(evt) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  //this.background = '#f5fcff'
+  this.opacity = '1'
+}
+
+//Drop listener
+@HostListener('drop', ['$event'])
+public ondrop(evt) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  //this.background = '#f5fcff'
+  this.opacity = '1'
+  let files = evt.dataTransfer.files;
+  if (files.length > 0) {
+      this.onFileDropped.emit(files)
+  }
+}
+
+allowDrop(ev) {
+  ev.preventDefault();
+}
+
+uploadReturns(el, year: any) {
+  let inputFile = el.files[0];
+  el.value = '';
+  this.readFile(inputFile).then((file) => {
+
+      this.file = [file];
+      this.files = [file.name];
+
+      let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# File caricato');
+      this.activityManager.engApplication.notifyMessage(successMessage);
+
+      // let el: HTMLElement = document.getElementById('uploadReturnsInput');
+      // el.nodeValue = undefined;
+
+      this.saveFile(file, year);
+  });
+}
+
+readFile(inputFile: any): Promise<{
+  name: string;
+  size: number;
+  type: string;
+  content: any
+}> {
+  let deferred = Promises.defer<any>()
+  var reader = new FileReader();
+  reader.onload = (onLoadEvent) => {
+      var arrayBuffer = onLoadEvent.target['result'];
+      console.log("on Load ", onLoadEvent);
+      deferred.resolve({
+          name: inputFile.name,
+          size: inputFile.size,
+          type: inputFile.type,
+          content: arrayBuffer
+      });
+  };
+  reader.onprogress = (progressEvent) => {
+      console.log("onprogress ", progressEvent)
+  };
+  reader.readAsArrayBuffer(inputFile);
+  return deferred.promise;
+}
+
+saveFile(file: any, year: any){
+  this.header.visible = true;
+  this.header.label = "Upload file in corso..";
+  this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+  this.flowConfigurationService.saveReturnsFilesTot(file,this.fmflow.id,this.version, year.toString()).then(response => {
+      this.header.visible = false;
+      this.header.label = "";
+      this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+      let result: any = response.opTargetObject;
+      if (result.success) {
+          let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Upload avvenuto con successo');
+          this.activityManager.engApplication.notifyMessage(successMessage);
+      } else {
+          this.choices = [];
+          this.choices.push(this.choice);
+          this.activity.getUserConfirmService().askChooseOneMessage(this.choices, 'Attenzione', result.message)
+              .then(function () {
+                      return;
+                  }
+              );
+      }
+  }).catch((e) => {
+      this.header.visible = false;
+      this.header.label = "";
+      this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+  });
+  // return Promise.resolve();
+  }
+
+  getCanViewMonthOrDateFromToFilters(flowName: string) {
+
+    let filter: SearchFilters = new SearchFilters();
+    let flowEnabledList: string = "";
+    filter.tabgenId = "DASHBOARD_EXTRA_CONFIG";
+    return this.flowConfigurationService.tabgenValueListSearchDataProvider(filter).then(response => {
+      if (response.success) {
+        if (response.opTargetObject.error) {
+          this.canViewMonthFromToFilters = false;
+          this.canViewDateFromToFilters = false;
+        } else {
+          //gestione per range di mesi
+          for(let i=0; i<response.opTargetObject.items.length; i++) {
+            if(response.opTargetObject.items[i]["field1"] === "monthFromToFilterEnableForBadge") {
+              flowEnabledList = response.opTargetObject.items[i]["field3"];
+            }
+          }
+          if (flowEnabledList !== null && flowEnabledList !== "") {
+            var isPresentMonth = false;
+            var flowList = flowEnabledList.split(',');
+            for(let i=0; i<flowList.length; i++) {
+              if(!isPresentMonth && flowList[i].toLowerCase() === flowName.toLowerCase()) {
+                isPresentMonth = true;
+              }
+            }
+            this.canViewMonthFromToFilters = isPresentMonth;
+          }
+          //gestione per range di date
+          for(let i=0; i<response.opTargetObject.items.length; i++) {
+            if(response.opTargetObject.items[i]["field1"] === "dateBetweenToFilterEnableForBadge") {
+              flowEnabledList = response.opTargetObject.items[i]["field3"];
+            }
+          }
+          if (flowEnabledList !== null && flowEnabledList !== "") {
+            var isPresentDate = false;
+            var flowList = flowEnabledList.split(',');
+            for(let i=0; i<flowList.length; i++) {
+              if(!isPresentDate && flowList[i].toLowerCase() === flowName.toLowerCase()) {
+                isPresentDate = true;
+                //se 1 flusso è parametrizzato per entrambi le configurazioni prevale quella per range di data
+                this.canViewMonthFromToFilters = false;
+              }
+            }
+            this.canViewDateFromToFilters = isPresentDate;
+          }
+        }
+      } 
+    }).catch(() => {
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+      this.canViewMonthFromToFilters = false;
+      this.canViewDateFromToFilters = false;
+    });
+    
+  }
+
+  getExtraFilterValues(flowName: string) {
+    let filter: SearchFilters = new SearchFilters();
+    let comboBoxTable: string = "";
+    filter.tabgenId = "DASHBOARD_EXTRA";
+    return this.flowConfigurationService.tabgenValueListSearchDataProvider(filter).then(response => {
+      if (response.success) {
+        if (response.opTargetObject.error) {
+        } else {
+          for(let i=0; i<response.opTargetObject.items.length; i++) {
+            if(response.opTargetObject.items[i]["field1"].toLowerCase() === flowName.toLowerCase()) {
+              let filter = new ExtraFilter();
+              filter.campo = response.opTargetObject.items[i]["field2"];
+              filter.label = "!i18n#" + response.opTargetObject.items[i]["field4"];
+              filter.selected = "";
+              this.extraFilter.push(filter);
+              comboBoxTable = response.opTargetObject.items[i]["field3"];
+              this.buildValueSet(filter.campo, comboBoxTable).then(response => {
+                
+              });
+            }
+          }
+          
+        }
+      } 
+    }).catch(e => {
+      console.error(e);
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+    });
+  }
+
+  buildValueSet(campo:string, comboBoxTable: string): Promise<any> {
+    if (comboBoxTable !== null) {
+      let filter: SearchFilters = new SearchFilters();
+      let valuesList: ExtraFilterValueSet[] = [];
+      filter.tabgenId = comboBoxTable.toUpperCase();
+      return this.flowConfigurationService.tabgenValueListSearchDataProvider(filter).then(response => {
+        if (response.success) {
+          if (response.opTargetObject.error) {
+          } else {
+            for(let i=0; i<response.opTargetObject.items.length; i++) {
+              let value = new ExtraFilterValueSet();
+              value.code = response.opTargetObject.items[i]["field1"];
+              value.display = "!i18n#" + response.opTargetObject.items[i]["field2"];
+              valuesList.push(value);
+            }
+            this.valueSetsService.registerLocalValueSet(campo.toLowerCase() + "-filter-value-set", valuesList);
+          }
+        } 
+      }).catch(() => {
+        let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+        this.activityManager.engApplication.notifyMessage(errorMessage);
+      });
+    }
+    return Promise.resolve(null as any).then();
+  }
+
+  serachDashDateFrom(date: Date) {
+    if (!date) return;
+
+    // normalizzo a inizio giornata
+    this.valueFilterDateFrom = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+
+    // se FROM > TO, riallineo TO alla stessa data (fine giornata)
+    if (this.valueFilterDateTo && this.valueFilterDateFrom > this.valueFilterDateTo) {
+      this.valueFilterDateTo = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+    }
+  }
+
+  serachDashDateTo(date: Date) {
+    if (!date) return;
+
+    // normalizzo a fine giornata
+    this.valueFilterDateTo = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+
+    // se TO < FROM, riallineo FROM alla stessa data (inizio giornata)
+    if (this.valueFilterDateFrom && this.valueFilterDateTo < this.valueFilterDateFrom) {
+      this.valueFilterDateFrom = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+    }
+  }
+
+}

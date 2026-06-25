@@ -1,0 +1,35 @@
+<div class="eng-classic-form">
+
+        <div *ngFor="let anl of anagraficaTable.tabgenFields; index as i ">
+            
+             <eng-text-field  (change)="change($event, anl.description)"
+                            fxFlex='70'
+                            label=!i18n#{{anl.description}}
+                            maxlength="2000"
+                            required={{anl.nullable}}
+                            [defaultValue]=element[anl.description]>
+                            
+            </eng-text-field> 
+    
+            <!-- (change)="change($event, anl.description)"
+            [property]="element[anl.description]"
+            > -->
+    
+        </div>
+        <div>
+            <eng-date-field (change)="changeDate($event, 'enabledDate')"
+                fxFlex='50'
+                label='DT_ENABLE' 
+                [defaultValue]=element.enabledDate
+                property="element.enabledDate">
+            </eng-date-field>
+    
+            <eng-date-field (change)="changeDate($event, 'disabledDate')"
+                fxFlex='50' 
+                label='DT_DISABLE'
+                [defaultValue]=element.disabledDate
+                property="element.disabledDate">
+            </eng-date-field>
+        </div>
+    
+    </div>

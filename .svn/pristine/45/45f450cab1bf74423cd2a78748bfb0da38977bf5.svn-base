@@ -1,0 +1,387 @@
+ 
+  <mat-toolbar>
+    &nbsp;
+    <!--
+    <mat-form-field style = "width: 7%; font-size: 10pt;">
+      <mat-label style="font-size: 13px;" >Flusso</mat-label>
+      <mat-select  [(ngModel)]="selectedFlusso" >
+        <mat-option class="select-mat-option"></mat-option>
+        <mat-option class="select-mat-option" *ngFor="let item of flussoColumns" [value]="item">{{item}}</mat-option>       
+      </mat-select>
+    </mat-form-field>
+
+    <span><div style="width: 25px;"></div></span>
+
+    <mat-form-field class="filter-field" style = "width: 6%;"> 
+      <mat-label style="font-size: 13px;">Id Flusso</mat-label>
+      <input class="filterInput" [(ngModel)]="monitorSdoXlFilter.flussoId" matInput placeholder="Id Flusso"/>
+    </mat-form-field>
+
+    <span><div style="width: 25px;"></div></span>
+-->
+    <mat-form-field class="filter-field" style = "width: 7%;">
+      <mat-label style="font-size: 13px;">Presidio</mat-label>
+      <input class="filterInput" [(ngModel)]="monitorSdoXlFilter.presidio" matInput placeholder="Presidio"/>
+    </mat-form-field> 
+
+    <span><div style="width: 25px;"></div></span>
+
+    <mat-form-field class="filter-field" style = "width: 8%;">
+      <input class="filterInput" matInput type="text" [(ngModel)]="monitorSdoXlFilter.nosologicoFrom">
+      <mat-placeholder class="placeholder" style="font-size: 13px;">Nosologico Da</mat-placeholder>
+    </mat-form-field>
+
+    <span><div style="width: 25px;"></div></span>
+
+    <mat-form-field class="filter-field" style = "width: 8%;">
+      <input class="filterInput" matInput type="text"  [(ngModel)]="monitorSdoXlFilter.nosologicoTo">
+      <mat-placeholder class="placeholder" style="font-size: 13px;">Nosologico A</mat-placeholder>
+    </mat-form-field>
+
+    <span><div style="width: 25px;"></div></span>
+
+    <mat-form-field class="filter-field">
+      <mat-label style="font-size: 13px;">Nominativo</mat-label>
+      <input class="filterInput" [(ngModel)]="monitorSdoXlFilter.nominativo" matInput placeholder="Nominativo"/>
+    </mat-form-field>
+
+    <span><div style="width: 25px;"></div></span>
+
+    <mat-form-field class="filter-field">
+      <mat-label style="font-size: 13px;">Reparto</mat-label>
+      <input class="filterInput" matInput placeholder="Reparto" [(ngModel)]="monitorSdoXlFilter.reparto"/>
+    </mat-form-field>
+
+  <span><div style="width: 25px;"></div></span>
+
+  <mat-form-field class="filter-field">
+    <mat-label style="font-size: 13px;">Operazione</mat-label>
+    <input class="filterInput" matInput placeholder="Operazione" [(ngModel)]="monitorSdoXlFilter.operazione"/>
+  </mat-form-field>
+
+  <span><div style="width: 25px;"></div></span>
+
+  <mat-form-field class="filter-field">
+  <mat-label style="font-size: 13px;">Protocollo Sio</mat-label>
+  <input class="filterInput" matInput placeholder="Protocollo Sio" [(ngModel)]="monitorSdoXlFilter.protocolloSio"/>
+  </mat-form-field>
+
+  <span><div style="width: 25px;"></div></span>
+
+  <mat-form-field class="filter-field"> 
+  <mat-label style="font-size: 13px;">Esito</mat-label>
+  <input class="filterInput" matInput placeholder="Esito" [(ngModel)]="monitorSdoXlFilter.esito"/>
+  </mat-form-field>
+
+  <span><div style="width: 25px;"></div></span>
+
+  <mat-form-field class="filter-field"> 
+    <mat-label style="font-size: 13px;">Trasmissione</mat-label>
+    <input class="filterInput" matInput placeholder="Trasmissione" [(ngModel)]="monitorSdoXlFilter.trasmissione"/>
+  </mat-form-field>
+  
+
+</mat-toolbar>
+
+<mat-toolbar class="row-filter" style="font-size: 25px;">
+
+  <eng-date-time-field class="filter-field"
+            label='DATA_RICOVERO_FROM'
+            (change)="changeRicoveroStartDate($event)" 
+            style="width: 15%; font-size: 10px">
+  </eng-date-time-field>
+
+  <eng-date-time-field class="filter-field" 
+            (change)="changeRicoveroEndingDate($event)"
+            label= 'DATA_RICOVERO_TO' 
+            style="width: 15%;">
+  </eng-date-time-field>
+
+  <mat-divider vertical style="height:50px"></mat-divider>
+
+  <span><div style="width: 20px;"></div></span>
+
+  <eng-date-time-field class="dateTime" (change)="changeDimissioneStartingDate($event)" class="fieldData"
+            label='DATA_DIMISSIONE_FROM' 
+            style="width: 15%;">
+  </eng-date-time-field>
+
+  <eng-date-time-field class="dateTime" (change)="changeDimissioneEndingDate($event)" class="fieldData"
+            label= "DATA_DIMISSIONE_TO" 
+            style="width: 15%;">
+  </eng-date-time-field>
+  
+  <span><div style="width: 20px;"></div></span>
+</mat-toolbar>
+
+<mat-toolbar class="row-filter" style="font-size: 25px;">
+  <eng-date-time-field class="filter-field" (change)="changeInvioStartingDate($event)"
+          label='DATA_INVIO_FROM' 
+          style="width: 15%;">
+</eng-date-time-field>
+<eng-date-time-field class="filter-field" 
+          (change)="changeInvioEndingDate($event)"
+          label= "DATA_INVIO_TO" >
+</eng-date-time-field>
+
+<mat-divider vertical style="height:50px"></mat-divider>
+<span><div style="width: 20px;"></div></span>
+
+<eng-date-time-field class="dateTime" (change)="changeRicezioneStartingDate($event)" class="fieldData"
+          label='DATA_RICEZIONE_FROM'         
+          style="width: 15%;">
+</eng-date-time-field>
+<eng-date-time-field class="dateTime" (change)="changeRicezioneEndingDate($event)" class="fieldData"
+          label= "DATA_RICEZIONE_TO" 
+          style="width: 15%;">
+</eng-date-time-field>
+<span><div style="width: 20px;"></div></span>
+<div class="prefix-icon ng-star-inserted">
+  <button mat-icon-button (click) = "searchMonitorData()"  >
+  <mat-icon 
+      class="mat-icon notranslate material-icons mat-icon-no-color ng-star-inserted" 
+      role="img"  
+      aria-hidden="true" >search
+      
+  </mat-icon>
+</button> 
+</div>  
+<div class="prefix-icon ng-star-inserted">
+  <button mat-icon-button (click) = "clearFilter()"  >
+  <mat-icon 
+      class="mat-icon notranslate material-icons mat-icon-no-color " 
+      role="img"  
+      aria-hidden="true" >delete_sweep    
+  </mat-icon>
+</button> 
+</div>
+</mat-toolbar>
+
+  
+ 
+
+<table class="as-table"  (matSortChange)="sortMonitorSdoData($event)"  multiTemplateDataRows  mat-table  [dataSource]="dataSource"  matSort matSortActive="created" matSortDisableClear >
+    
+    <ng-container matColumnDef="expandedDetail">
+      &nbsp;
+      <td mat-cell *matCellDef="let element" [attr.colspan]="displayedColumns.length">
+        <div class="example-element-detail"
+             [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'"> 
+             &nbsp;
+             <table mat-table [style.width.%]="100" [dataSource]="dataSourceErrors">
+ 
+               <div *ngFor="let fieldErrors of displayedColumnsErrors; index as j ">
+                  <div *ngIf="fieldErrors != 'GRAVITA'">
+                      <ng-container [matColumnDef]="fieldErrors">
+                          <th  mat-header-cell *matHeaderCellDef sticky class="provaHeader">
+                              &nbsp;&nbsp;&nbsp;{{fieldErrors}}&nbsp;&nbsp;&nbsp; </th>
+                          <td mat-cell *matCellDef="let elementErrors" class="provaCell">
+                              {{elementErrors[fieldErrors]}} </td>
+                      </ng-container>
+                  </div>
+                  
+                  <div *ngIf="fieldErrors == 'GRAVITA'">
+                      <ng-container [matColumnDef]="fieldErrors">
+                          <th mat-header-cell *matHeaderCellDef sticky class="provaHeader">GRAVITA
+                          </th>
+                          <td mat-cell *matCellDef="let elementErrors" class="provaCell">
+                              <mat-icon *ngIf="elementErrors['GRAVITA'] == 'WARNING'"
+                                  matTooltip="WARNING" style="color: orange">warning</mat-icon>
+                              <mat-icon *ngIf="elementErrors['GRAVITA'] == 'SEGNALAZIONE'"
+                                  matTooltip="SEGNALAZIONE" style="color: orange">warning</mat-icon>
+                              <mat-icon *ngIf="elementErrors['GRAVITA'] == 'ERROR'" matTooltip="ERROR"
+                                  style="color: crimson">error</mat-icon>
+                              <mat-icon *ngIf="elementErrors['GRAVITA'] == 'SCARTO'"
+                                  matTooltip="SCARTO" style="color: crimson">error</mat-icon>
+                          </td>
+                      </ng-container>
+                  </div>
+                </div> 
+              
+                <tr mat-header-row *matHeaderRowDef="displayedColumnsErrors; sticky: true"></tr>
+                <tr mat-row *matRowDef="let elementErrors; columns: displayedColumnsErrors;" class="prova"></tr>
+              </table> 
+        </div>
+        
+        <div class="example-element-detail"
+            [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'">
+            <mat-toolbar class="PaginatorToolbar">
+              <button mat-icon-button (click)= "goToFirstPageError(element.flusso,element.nosologico)" 
+                  [style.cursor] = "firstResultDisplayError===1 ? 'default' : 'pointer'" 
+                  [style.color]="firstResultDisplayError===1 ? 'rgba(0,0,0,0.38)' : ''" 
+                  matTooltip="Prima pagina" >
+                  <mat-icon>first_page</mat-icon>
+              </button>
+            
+              <mat-icon (click)="getServerDataLeftError(element.flusso,element.nosologico)" 
+                  [style.cursor] = "firstResultDisplayError===1 ? 'default' : 'pointer'" 
+                  [style.color]="firstResultDisplayError===1 ? 'rgba(0,0,0,0.38)' : '' ">
+                  keyboard_arrow_left
+              </mat-icon>
+                  &nbsp;{{firstResultDisplayError}} - {{endPageError}}&nbsp;
+              <mat-icon (click)="getServerDataRightError(element.flusso,element.nosologico)"
+                  [style.cursor] = "firstResultDisplayError < endPageError ? 'pointer' : 'default'" 
+                  [style.color]="firstResultDisplayError < endPageError ? '' : 'rgba(0,0,0,0.38)'" >   
+                  keyboard_arrow_right
+              </mat-icon>
+            
+              <button mat-icon-button (click)= "goToLastPageError(element.flusso,element.nosologico)"
+                  [style.cursor] = "firstResultDisplayError < endPageError ? 'pointer' : 'default'" 
+                  [style.color]="firstResultDisplayError < endPageError ? '' : 'rgba(0,0,0,0.38)'"  
+                  matTooltip="Ultima pagina">
+                  <mat-icon>last_page</mat-icon>
+              </button>
+              &nbsp;&nbsp;
+              <p>di</p>
+              &nbsp;
+              <p>{{totalCountError}}</p>
+            
+            </mat-toolbar>
+        </div>
+      </td>     
+    </ng-container>
+
+<!--<ng-container matColumnDef="flussoId" hidden = "true" >
+      <th  mat-header-cell *matHeaderCellDef mat-sort-header> Id Flusso</th>
+      <td  mat-cell [style.padding.px] = "2" *matCellDef="let element"> {{element.flussoId}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="flusso" hidden = "true">
+        <th  mat-header-cell *matHeaderCellDef mat-sort-header>Flusso</th>
+        <td  mat-cell [style.padding.px] = "2" *matCellDef="let element"> {{element.flusso}} </td>
+    </ng-container>
+  -->
+    <ng-container matColumnDef="presidio">
+      <th class="as-table-nome" mat-header-cell *matHeaderCellDef mat-sort-header> Presidio </th>
+      <td class="as-table-nome" [style.padding.px] = "2" mat-cell *matCellDef="let element"> {{element.presidio}} </td>
+    </ng-container>
+  
+    <ng-container matColumnDef="nosologico" >
+      <th class="as-table-cognome" mat-header-cell *matHeaderCellDef mat-sort-header> Nosologico </th>
+      <td class="as-table-cognome" [style.padding.px] = "2" mat-cell *matCellDef="let element"> {{element.nosologico}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="nominativo" >
+        <th class="as-table-cognome"  mat-header-cell *matHeaderCellDef mat-sort-header> Nominativo </th>
+        <td class="as-table-cognome" [style.padding.px] = "2" mat-cell *matCellDef="let element"> {{element.nominativo}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="reparto" >
+        <th class="as-table-cognome"  mat-header-cell *matHeaderCellDef mat-sort-header> Reparto </th>
+        <td class="as-table-cognome" [style.padding.px] = "2" mat-cell *matCellDef="let element"> {{element.reparto}} </td>
+    </ng-container>
+  
+    <ng-container  matColumnDef="dataRicovero">
+      <th  mat-header-cell  *matHeaderCellDef mat-sort-header [style.width.%]="5"> Data Ricovero </th>
+      <td  mat-cell [style.padding.px] = "2" [style.width.%]="5" *matCellDef="let element"> {{element.dataRicovero | date: 'dd/MM/yyyy, h:mm a'}} </td>
+    </ng-container>
+
+    <ng-container  matColumnDef="dataDimissione">
+        <th  mat-header-cell  *matHeaderCellDef [style.width.%]="5" mat-sort-header> Data Dimissione </th>
+        <td  mat-cell [style.padding.px] = "2" [style.width.%]="5" *matCellDef="let element"> {{element.dataDimissione | date: 'dd/MM/yyyy, h:mm a'}} </td>
+      </ng-container>
+
+    <ng-container matColumnDef="operazione">
+        <th  mat-header-cell *matHeaderCellDef  mat-sort-header> Operazione </th>
+        <td  mat-cell [style.padding.px] = "2" *matCellDef="let element"> {{element.operazione}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="trasmissione">
+        <th  mat-header-cell *matHeaderCellDef mat-sort-header> Trasmissione </th>
+        <td  mat-cell [style.padding.px] = "2" *matCellDef="let element"> {{element.trasmissione}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="protocolloSio">
+        <th  mat-header-cell *matHeaderCellDef mat-sort-header> Protocollo Sio </th>
+        <td  mat-cell [style.padding.px] = "2" *matCellDef="let element"> {{element.protocolloSio}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="dataInvio">
+        <th  mat-header-cell [style.width.%]="5" *matHeaderCellDef mat-sort-header> Data Invio </th>
+        <td  mat-cell [style.width.%]="5" [style.padding.px] = "2" *matCellDef="let element"> {{element.dataInvio | date: 'dd/MM/yyyy, h:mm a'}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="dataRicezione">
+        <th  mat-header-cell [style.width.%]="5" *matHeaderCellDef mat-sort-header> Data Ricezione </th>
+        <td  mat-cell [style.width.%]="5" [style.padding.px] = "2" *matCellDef="let element"> {{element.dataRicezione | date: 'dd/MM/yyyy, h:mm a'}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="esito">
+        <th  class = "esito-header" mat-header-cell *matHeaderCellDef mat-sort-header> Esito </th>
+        <td  class = "esito-column" [style.padding.px] = "2" mat-cell *matCellDef="let element">  {{element.esito}}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="download"> 
+      <th  mat-header-cell *matHeaderCellDef> Download </th>
+      <td class="download" mat-cell *matCellDef="let element">
+        <button (click)="$event.stopPropagation()"
+            [disabled]="element.status == 0" [matMenuTriggerFor]="menu"
+            aria-label="Example icon-button with a menu" mat-icon-button>
+            <mat-icon>cloud_download</mat-icon>
+        </button>
+        <mat-menu #menu="matMenu">
+            <button  mat-menu-item (click) = downloadXML(element.flussoId,element.presidio,element.nosologico)>
+                <mat-icon>list</mat-icon>
+                <span>Download File</span>
+            </button>
+        </mat-menu>
+      </td>
+    </ng-container>
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let element; columns: displayedColumns;"
+      class="example-element-row"
+      [class.example-expanded-row]="expandedElement === element"
+      (click)="expandedElement = expandedElement === element ? null : element; viewFlowPraticaError(element.flusso,element.nosologico)">
+    </tr>
+  <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+  </table>
+
+  <mat-toolbar color="primary" class="toolbarBottom">
+   
+    <button mat-icon-button (click)= "goToFirstPage()" 
+        [style.cursor] = "firstResultDisplay===1 ? 'default' : 'pointer'" 
+        [style.color]="firstResultDisplay===1 ? 'rgba(0,0,0,0.38)' : ''" 
+        matTooltip="Prima pagina" >
+        <mat-icon>first_page</mat-icon>
+    </button>
+  
+    <mat-icon (click)="getServerDataLeft()" 
+        [style.cursor] = "firstResultDisplay===1 ? 'default' : 'pointer'" 
+        [style.color]="firstResultDisplay===1 ? 'rgba(0,0,0,0.38)' : '' ">
+        keyboard_arrow_left
+    </mat-icon>
+        &nbsp;{{firstResultDisplay}} - {{endPage}}&nbsp;
+    <mat-icon (click)="getServerDataRight()"
+        [style.cursor] = "firstResultDisplay < endPage ? 'pointer' : 'default'" 
+        [style.color]="firstResultDisplay < endPage ? '' : 'rgba(0,0,0,0.38)'" >   
+        keyboard_arrow_right
+    </mat-icon>
+   
+    <button mat-icon-button (click)= "goToLastPage()"
+        [style.cursor] = "firstResultDisplay < endPage ? 'pointer' : 'default'" 
+        [style.color]="firstResultDisplay < endPage ? '' : 'rgba(0,0,0,0.38)'"  
+        matTooltip="Ultima pagina">
+        <mat-icon>last_page</mat-icon>
+    </button>
+    &nbsp;&nbsp;
+    <button mat-icon-button (click)= "showTotalData()">    
+      <mat-icon >
+         keyboard_tab &nbsp;
+      </mat-icon>
+    </button>
+    <p >{{totalCount}}</p>
+
+</mat-toolbar>
+
+<div class="mask" *ngIf="showLoadingIndicator">
+  <div class="lds-roller" *ngIf="showLoadingIndicator">
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+  </div>

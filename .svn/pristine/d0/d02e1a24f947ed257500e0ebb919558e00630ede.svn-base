@@ -1,0 +1,19 @@
+<div class="uploadToolbar">
+    <mat-toolbar class="uploadToolbar" >  
+
+    <input type="file" class="file-input" (change)="fileChanged($event)" #fileUpload>
+       
+    <div class="file-upload">
+
+        {{fileName || "Nessun file ancora caricato."}}
+     
+         <button mat-mini-fab color="primary" class="upload-btn"
+           (click)="fileUpload.click()" >
+             <mat-icon>attach_file</mat-icon>
+         </button>
+     </div>
+        
+        
+    </mat-toolbar>
+
+</div>

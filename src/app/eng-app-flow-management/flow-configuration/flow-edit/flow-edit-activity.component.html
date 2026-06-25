@@ -1,0 +1,344 @@
+<div class="background">
+<mat-horizontal-stepper (selectionChange)="changeStep($event)" [linear]="isLinear" #stepper>
+    <mat-step [stepControl]="firstFormGroup">
+
+        <ng-template matStepLabel>FLUSSO</ng-template>
+
+        <mat-card class="example-card">
+
+            <div class="eng-classic-form">
+
+<!--                <eng-text-field fxFlex='35' required="true" maxlength="10" label='CODE_FLW' property="code">-->
+<!--                </eng-text-field>-->
+
+                <eng-text-field fxFlex='35' required="true" maxlength="25" label='DR_LABEL_NAME' property="name">
+                </eng-text-field>
+                <eng-text-field fxFlex='50' required="true" maxlength="256" label='DESC_BREVE_FLW' property="descrb">
+                </eng-text-field>
+
+                <eng-check-field fxFlex='30'  label='FLOW_CFG_TYPE_LABEL' property="flowTypeBoolean" [defaultValue]=true >
+                </eng-check-field>
+
+                <eng-text-field fxFlex='50' required="true" maxlength="256" label='DESCRIPTION_FLW' property="description">
+                </eng-text-field>
+
+                <eng-select-field fxFlex='25' [style.padding-bottom]="'25px'" label='VERSION_FLW' 
+                                  property="version" valueSet="fm/VersionDTO@global" >
+                </eng-select-field>          
+
+                <eng-check-field fxFlex='25' label='STATE_FLW' property="status" [defaultValue]=true>
+                </eng-check-field>
+            
+                <eng-choice-field fxFlex='100' required="true" label="FLW_COMM_PROT" property="commProt" 
+                                  valueSet="protocol-value-set@local" (change)="changeRadio($event)">
+                </eng-choice-field>             
+
+                <eng-select-field fxFlex='35' label='PERIOD_FLW' property="periodicy"
+                                  [hidden] = true
+                                  valueSet="period-value-set@local" (change)="changePeriodicity($event)">
+                </eng-select-field> 
+                
+       
+                <eng-select-field *ngIf="!flagWeekly" fxFlex='35' label='MONTH_EXP_FLW' property="yearlyDeadline"
+                                  [hidden] = true
+                                  valueSet="yearly-value-set@local"  [defaultValue]=valueMonth>
+                </eng-select-field> 
+          
+
+                <eng-select-field *ngIf="flagWeekly" fxFlex='30' label='DAY_EXP_FLW' property="monthlyDeadline"
+                                  [hidden] = true
+                                  valueSet="weekly-value-set@local">
+                </eng-select-field>
+
+                <eng-select-field *ngIf="!flagWeekly" fxFlex='30' label='DAY_EXP_FLW' property="monthlyDeadline"
+                                  [hidden] = true
+                                  valueSet="monthly-value-set@local">
+                </eng-select-field>
+              
+                
+                <eng-select-field fxFlex='25' [style.padding-bottom]="'25px'" label='DATA_SOURCE' [hidden]="hiddenValue"
+                    valueSet="fm/DataSourceDTO@global" property="datasource" [defaultValue]="datasource">
+                </eng-select-field>
+
+                <!-- <eng-check-field label='SEND_REMOTE_FLW' property="remoteSend">
+                </eng-check-field>
+
+
+                <eng-check-field label='CTRL_UNIV_FLW' property="uniqueness">
+                </eng-check-field>
+
+
+                <eng-check-field label='SCHEDULING_FLW' property="scheduling">
+                </eng-check-field> -->
+
+            </div>
+
+    </mat-card>
+
+
+    </mat-step>
+    <mat-step [stepControl]="secondFormGroup">
+
+        <ng-template matStepLabel>SEZIONI FLUSSO</ng-template>
+
+        <div>
+            <mat-card *ngFor="let tf of flowTableList; index as j" class="example-card">
+              
+                    <mat-card-title>
+                       {{tf.name}}
+                    </mat-card-title>       
+
+            <div class="eng-classic-form">
+
+                        <eng-text-field fxFlex='100' required="true" maxlength="25" label='DR_LABEL_NAME'
+                            (change)="changeNameSez($event, j)" [property]='"name" + j' [defaultValue]="tf.name"> 
+                        </eng-text-field>
+
+
+                        <eng-text-field fxFlex='50' required="true" maxlength="256" label='DESCRIPTION_FLW'
+                            (change)="changeDescSez($event, j)"  [property]='"descr" + j' [defaultValue]="tf.description">
+                        </eng-text-field>
+
+                        <eng-check-field fxFlex='25' label='MANDATORY_SEC' [property]='"required" + j'
+                            [defaultValue]="tf.required">
+                        </eng-check-field> 
+
+            </div>
+
+                <button mat-button class="delete-button" (click)="deleteSection(tf,j)">
+                    <mat-icon>delete_forever</mat-icon>
+                </button>
+
+            </mat-card>
+        </div>
+    </mat-step>
+    <mat-step>
+        <ng-template matStepLabel>CAMPI FLUSSO</ng-template>
+
+        <div *ngFor="let tf of flowTableList; index as j">
+            <mat-accordion>
+                <mat-expansion-panel class="dettaglio" [expanded]="true">
+                    <mat-expansion-panel-header class="header-tf">
+                        <mat-panel-title class="mat-title2">
+                            <b> {{tf.name}} </b>
+                        </mat-panel-title>
+                    </mat-expansion-panel-header>
+
+
+                <div *ngFor="let tfl of tf.flowTableFieldList; index as i ">
+                    <mat-accordion (click)="renderDOM(i,j)">
+                        <mat-expansion-panel class="dettaglio" [expanded]="isExpanded[j][i]">
+                         
+                            <mat-expansion-panel-header>                                    
+                                <mat-panel-title class="mat-title">
+                                       
+                                    <!-- <b *ngIf="tfl.name"> {{tfl.name}} </b> -->
+                                    <b *ngIf="tfl.name != null"> {{tfl.name}} </b>
+                                    <b *ngIf="tfl.name == null"> NuovoCampo{{i+1}} </b>
+
+                                </mat-panel-title>
+                            </mat-expansion-panel-header>
+
+                    <div class="eng-classic-form" *ngIf="isDomRedered(i,j)">
+
+                                <eng-text-field fxFlex='23.3' required="true" maxlength="25px" label='DR_LABEL_NAME'
+                                    (change)="changeName($event, i,j)" [property]='"fieldname0"+ j + i'
+                                    [defaultValue]="tfl.name">
+                                </eng-text-field>
+                                     
+                                <eng-number-field fxFlex='23.3' required="true" maxlength="25px" label='LENGTH_FLW'
+                                    [property]='"fieldlength0"+j +i'
+                                    [defaultValue]="tfl.length" type>
+                                </eng-number-field>
+
+                                <eng-number-field fxFlex='23.3' required="true" maxlength="25px" label='LENGTH_TABLE_FLW'
+                                    [property]='"tablefieldlen0"+j +i'
+                                    [defaultValue]="tfl.physicalSize" type>
+                                </eng-number-field>
+
+                                <eng-select-field fxFlex='23.3' [style.padding-bottom]="'25px'" label='TYPE_FLW'
+                                                    valueSet="fm/FieldTypeDTO@global"
+                                                  [property]='"fieldtype0"+j +i'
+                                        [defaultValue]="tfl.fieldType"
+                                                  (change)="changeType($event, i,j)">
+                                </eng-select-field>
+                         
+                                <eng-text-field fxFlex='70' label='FLW_DESC_SM' required="true"
+                                        [property]='"fielddescsm0" +j +i' [defaultValue]="tfl.descriptionsm" >
+                        </eng-text-field>
+
+                        <eng-text-field fxFlex='70' label='FLW_DESC' required="true"
+                                        [property]='"fielddesc0" +j +i' [defaultValue]="tfl.description" >
+                        </eng-text-field>
+
+                        <!--                                <mat-form-field class="textareaForm">-->
+                        <!--                                    <textarea matInput placeholder="Descrizione" [ngModel]="tfl.description" -->
+                        <!--                                              [value]= '"fielddesc0" +j +i' required="true" class="textarea">-->
+                        <!--                                    </textarea>-->
+                        <!--                                </mat-form-field> -->
+
+                                <eng-text-field fxFlex='100' label='REG_EXP_FLW' [hidden]="!hiddenValue"
+                                    [property]='"fieldregexp0"+j +i' [defaultValue]="tfl.regExp">
+                                </eng-text-field>
+                                
+                                <eng-check-field *ngIf="!hiddenDate[j][i]" fxFlex='12.5' label='IS_REFERENCE_DATE_FLW'
+                                    [property]='"fieldrefdate0"+j+i' [defaultValue]="tfl.referenceDate">
+                                </eng-check-field>
+
+                                <eng-check-field fxFlex='23' label='PRIMARY_KEY_FLW' [property]='"fieldkey0"+j+i'
+                                    (change)="test2($event,i,j)"
+                                    [defaultValue]="tfl.pk">
+                                </eng-check-field>
+
+                                <eng-check-field fxFlex='23' label='MANDATORY_FLW' [property]='"fieldmandatory0"+j +i'
+                                    [defaultValue]="tfl.mandatory">
+                                </eng-check-field>            
+                                
+                                <eng-check-field fxFlex='23' label='IS_GROUPS_FLW' [property]='"fieldgroup0"+j+i'
+                                    [defaultValue]="tfl.groups">
+                                </eng-check-field> 
+                                
+                                <eng-check-field fxFlex='23' label='IS_CRYPTO_FLW' [property]='"fieldcrypto0"+j+i'
+                                     [defaultValue]="tfl.crypto">
+                                </eng-check-field> 
+
+                                <eng-check-field fxFlex='23' label='IS_ACTIVE_FLW' [property]='"fieldactive0"+j+i'
+                                    [defaultValue]=tfl.active>
+                                </eng-check-field>
+
+                            </div>
+
+                            <button mat-button class="delete-button" (click)="deleteField(j,i)">
+                                <mat-icon>delete_forever</mat-icon>
+                            </button>
+
+                        </mat-expansion-panel>
+                    </mat-accordion>
+
+                </div>
+
+                <button mat-button (click)="addField(j)">Aggiungi campo</button>
+
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+
+    </mat-step>
+    <mat-step>
+
+        <ng-template matStepLabel> COLLEGAMENTO CAMPI </ng-template>
+
+
+        <div *ngFor="let tf of flowTableList; index as i">
+            <mat-card class="example-card">
+                <mat-card-title>
+                    {{tf.name}}
+                </mat-card-title>
+
+
+
+                <mat-accordion>
+                    <mat-expansion-panel *ngFor="let tp of tf.listFk ; index as j">
+                        <mat-expansion-panel-header>
+                            <b class="header-tfl"> Campo collegamento </b>
+                        </mat-expansion-panel-header>
+                        <div class="eng-classic-form">
+                            <mat-form-field>
+                                <mat-label>Sezione Referenziata</mat-label>
+                                <mat-select (selectionChange)="selectedTables($event,i,j,tp)"
+                                    [(ngModel)]="tp.idTableReferenced">
+                                    <mat-option *ngFor="let tx of flowTableList; index as q" [value]=tx.id>
+                                        {{tx.name}}
+
+                                    </mat-option>
+                                </mat-select>
+                            </mat-form-field>
+
+                            <mat-form-field >
+                                <mat-label>Tipo Json</mat-label>
+                                <mat-select [(ngModel)]="tp.jsonFieldType">
+                                    <mat-option value="OBJECT" >
+                                        OBJECT
+                                    </mat-option>
+                                    <mat-option value="ARRAY" >
+                                        ARRAY
+                                    </mat-option>
+                                    </mat-select>
+
+                            </mat-form-field>
+
+
+                        </div>
+
+
+                        <div class="eng-classic-form">
+                            <mat-form-field class="form-campo">
+                                <mat-label>Campo sezione padre</mat-label>
+                                <mat-select [(ngModel)]="tp.idFieldTable">
+                                    <mat-option *ngFor="let fieldTable of tf.flowTableFieldList"
+                                        [value]="fieldTable.id">
+                                        {{fieldTable.name}}
+                                    </mat-option>
+                                </mat-select>
+
+                            </mat-form-field>
+
+                            <mat-form-field class="form-campo">
+                                <mat-label>Campo sezione figlio</mat-label>
+
+                                <mat-select [(ngModel)]="tp.idFieldTableReferenced">
+                                    <mat-option *ngFor="let sf of selectedTable[i][j].flowTableFieldList"
+                                        [value]="sf.id">
+                                        {{sf.name}}
+                                    </mat-option>
+                                </mat-select>
+
+
+                            </mat-form-field>
+                            <!--
+                            
+                                <mat-form-field class = "form-campo" >
+                                    <mat-label>Campo 2</mat-label>
+                                    
+                                            <mat-select (selectionChange)="selectedField2($event,i,j,tp)" [(ngModel)]="tp.secondField">
+                                                <mat-option   *ngFor="let fieldTableSelected of selectedTable[i][j].formFlowtable.flowTableFieldList" [value]="fieldTableSelected">
+                                               {{fieldTableSelected.name}}    
+                                                </mat-option>
+                                            </mat-select>
+                            
+                                          
+                                </mat-form-field>  -->
+
+                            <button mat-button class="delete-button" (click)="deleteFk(i,j,tp)">
+                                <mat-icon>delete_forever</mat-icon>
+                            </button>
+
+                        </div>
+
+
+                    </mat-expansion-panel>
+                </mat-accordion>
+                <button mat-button (click)="addFkSect(i)">Aggiungi campo</button>
+            </mat-card>
+        </div>
+
+    </mat-step>
+    <!-- <mat-step>
+        <ng-template matStepLabel>RIEPILOGO</ng-template>
+    </mat-step> -->
+</mat-horizontal-stepper>
+</div>
+
+
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+    </div>

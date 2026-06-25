@@ -1,0 +1,7 @@
+<div class="eng-classic-form">
+    <table style="width:100%;">
+        <tr *ngFor="let message of messages; index as i ">
+            <td style="padding:10px;">{{message}}</td>
+        </tr>
+    </table>
+</div>

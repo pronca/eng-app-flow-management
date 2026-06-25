@@ -1,0 +1,13 @@
+{
+  "HELLO_KEY": "Hello",
+  "PAGE_LABEL": "Flow Management",
+  "ACTIVITY_LABEL": "Activity Flow Management",
+  "ANA_CREATE_DATA":"Create new record",
+  "ANA_EDIT_DATA": "Edit record",
+  "ANA_DELETE_DATA": "Delete record",
+  "ANAGRAFICA_ASSISTITO_IMPORT_FILE": "Import File",
+  "ANAGRAFICA_ASSISTITO_EXPORT_FILE": "Export File",
+  "AGGIORNA_ANAGRAFICA" : "Update",
+  "INSERISCI_ANAGRAFICA" : "Insert",
+  "ANNULLA_ANAGRAFICA" : "Cancel"
+}

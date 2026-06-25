@@ -1,0 +1,851 @@
+import {Component, Input, ViewChild} from '@angular/core';
+import * as moment_ from 'moment';
+
+import {ActivityActionType, ActivityManager, EditActivityComponent} from 'eng-app';
+
+import {FlowConfigurationService} from "../../flow-configuration.service";
+import {FormControl, FormGroup} from '@angular/forms';
+import {MatPaginator, MatTableDataSource} from '@angular/material';
+import {FilterError, FlowTable, FmFlow, Header, header} from "../../flow-configuration.model";
+import {animate, state, style, transition, trigger} from '@angular/animations';
+import {Observable} from "rxjs";
+import {map, startWith} from "rxjs/operators";
+import { MAT_DIALOG_DATA, MatSnackBar, MatDialogRef, MatSnackBarRef } from "@angular/material";
+import { ThemeService } from 'ng2-charts';
+
+const moment = moment_;
+
+@Component({
+    selector: 'flow-error-activity',
+    templateUrl: './flow-error-activity.component.html',
+    styleUrls: ['./flow-error-activity.component.scss'],
+    animations: [
+      trigger('detailExpand', [
+        state('collapsed', style({height: '0px', minHeight: '0'})),
+        state('expanded', style({height: '*'})),
+        transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
+      ]),
+    ],
+  })
+
+
+  export class FlowErrorActivityComponent extends EditActivityComponent  {
+    //Search
+    @Input()
+    panelWidth: string | number = 300;
+    header: Header = new Header();
+    download_=false;
+    stateCtrl = new FormControl();
+    filteredStates: Observable<String[]>;
+    states: String[] = [];
+    isLinear = false;
+    firstFormGroup: FormGroup;
+    flowTableList: FlowTable[] = [];
+    fmflow: FmFlow;
+    displayedColumns: any[] = [];
+    showLoadingIndicator: boolean = true;
+    filterError: FilterError = new FilterError();
+    filterErrorCombo: FilterError = new FilterError();
+    map: any;
+    dataSource: any;
+    totalRecord: number[] = [];
+    version: string;
+    expandedElement: any;
+    displayedColumnsPratiche: any[] = [];
+    dataSourcePratiche: any;
+    mapPratiche: any;
+    totalItems: number;
+    codice : string = "";
+    month: string;
+    firstResultDisplay: number;
+    sectionBA: any;
+    firstResultDisplayAcc: number;
+    endPage: number;
+    endPageAcc: number;
+    flag: boolean = false;
+    blockLeft: boolean = true;
+    blockRight: boolean;
+    blockLeftAcc: boolean = true;
+    blockRightAcc: boolean;
+    countPratiche: number;
+    myControl = new FormControl();
+    options: string[] = [];
+    filteredOptions: Observable<string[]>;
+    pkName: string[] = [];
+    colMap: header[] = [];
+    queryDetail = false;
+
+    tipologiaOptions: string[] = [
+      'FROM_REST_SERVICE',
+      'FROM_TABLE',
+      'FROM_FILE_UPLOAD',
+      'FROM_EXPORTING_JOB'
+    ];
+
+    aziendeOptions: string[] = [];
+    codiceAzienda: string = "";
+
+    presidiOptions: string[] = [];
+    codicePresidio: string = "";
+
+    @ViewChild(MatPaginator,{ static: true }) paginator: MatPaginator;
+
+    error: string;
+    tipoImportazione : string;
+
+    constructor(
+        private flowConfigurationService: FlowConfigurationService,
+        private activityManager: ActivityManager,
+    ){
+        super();
+    }
+
+
+    ngOnInit(): void {
+        let starterParams: any = this.activity.startingParams;
+        this.fmflow = starterParams.editItem;
+        this.filterError.region = starterParams.region;
+        this.filterErrorCombo.region = starterParams.region;
+        this.endPage = 10;
+        this.filterError.topFive = false;
+        this.filterError.month = starterParams.extraMonth;
+        this.month = moment().month(Number(this.filterError.month)-1).format("MMMM");
+        this.filterError.year = starterParams.extraYear;
+        this.filterError.firstResult = 0;
+        this.filterError.maxResult = 10;
+        this.filterError.maxResultAcc = 5;
+        this.firstResultDisplay = this.filterError.firstResult + 1;
+        if(starterParams.editItem.extra){
+          this.filterError.topFive = true;
+        }else{
+          this.filterError.topFive = false;
+        }
+
+        //Filter Combo
+        this.filterErrorCombo.month = starterParams.extraMonth;
+        this.filterErrorCombo.year = starterParams.extraYear;
+
+
+        this.filterErrorCombo.extraMonthFrom = starterParams.extraMonthFrom;
+        this.filterErrorCombo.extraMonthTo = starterParams.extraMonthTo;
+        this.filterErrorCombo.canViewMonthFromToFilters = starterParams.canViewMonthFromToFilters;
+        this.filterErrorCombo.extraFilter = starterParams.extraFilter;
+
+        this.filterError.extraMonthFrom = starterParams.extraMonthFrom;
+        this.filterError.extraMonthTo = starterParams.extraMonthTo;
+        this.filterError.canViewMonthFromToFilters = starterParams.canViewMonthFromToFilters;
+        this.filterError.extraFilter = starterParams.extraFilter;
+
+        this.loadCodiciAzienda();
+        this.loadCodiciPresidio();
+        
+        this.getVersionName();
+        this.ricercaConf();
+        
+    }
+    
+    public notifyMessage(msg: string): MatSnackBarRef<any> {
+      let snackBarRef = this.snackBar.open(msg, 'CLOSE', { duration: 10000 });
+      return snackBarRef;
+    }
+
+    private _filterPresidio(value: string | null): string[] {
+      const filterValue = (value || '').toLowerCase();
+      return this.presidiOptions.filter(option =>
+        option.toLowerCase().includes(filterValue)
+      );
+    }
+
+    /**
+     * Carica i codici presidio da API
+     */
+    loadCodiciPresidio(): void {
+      this.flowConfigurationService.searchCodiciPresidio(this.fmflow)
+        .then(result => {
+        if (result.success && result.opTargetObject) {
+            this.presidiOptions = result.opTargetObject;
+          } else {
+            this.activityManager.engApplication.notifyMessage('Errore nel caricamento dei codici presidio');
+          }
+        })
+        .catch(() => {
+          this.activityManager.engApplication.notifyMessage('Errore di connessione al servizio searchCodiciPresidio');
+        });
+    }
+
+    /**
+     * 🔹 Carica i codici azienda da API
+     */
+    loadCodiciAzienda(): void {
+      this.flowConfigurationService.searchCodiciAzienda(this.fmflow)
+        .then(result => {
+          if (result.success && result.opTargetObject) {
+            this.aziendeOptions = result.opTargetObject;
+          } else {
+            this.activityManager.engApplication.notifyMessage('Errore nel caricamento dei codici azienda');
+          }
+        })
+        .catch(() => {
+          this.activityManager.engApplication.notifyMessage('Errore di connessione al servizio searchCodiciAzienda');
+        });
+    }
+
+    private _filter(value: string): string[] {
+        const filterValue = value.toLowerCase();
+        return this.options.filter(option => option.toLowerCase().includes(filterValue));
+    }
+
+    initActivityActions() {
+      super.initActivityActions();
+      this.activity.removeActivityAction(EditActivityComponent.SAVE_ACTION);
+
+        this.activity.addActivityAction({
+            actionType: ActivityActionType.MAIN,
+            name: EditActivityComponent.SAVE_ACTION,
+            tooltip: "Download",
+            icon: "get_app",
+            fn: (activity, action) => {
+                if(!this.download_){
+                  if (this.filterError.region !== undefined && this.filterError.region !== null) {
+                    this.exportFileXLSX(this.filterError.region);
+                  } else {
+                    this.exportFileXLSX("ERRORI");
+                  }
+                  return Promise.resolve(null);
+                }
+                else{
+                    this.activityManager.engApplication.notifyMessage('Download File XLS in corso, attendere il completamento');
+                    return Promise.resolve(null);
+                }
+            }
+        });
+    }
+
+
+    /**
+     *
+     */
+    exportFileXLSX(name: String) {
+        this.download_ = true;
+        this.header.visible = true;
+        this.header.label = "Donwloading XLS";
+        if (name !== "") {
+          this.filterError.name = name;
+        }  
+
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+        this.flowConfigurationService.downloadFlowErrorXlsx2(this.filterError).then(result => {
+            if (result.size > 0) {
+                var file = new Blob([result], {type: 'application/zip'});
+                var fileURL = URL.createObjectURL(file);
+                var anchor = document.createElement("a");
+                if (this.filterError.name == 'ERRORI_REG') {
+                  anchor.download = "Errori regionali flusso " + this.fmflow.name;
+                } else {
+                  anchor.download = "Pratiche errate flusso " + this.fmflow.name;
+                }
+                anchor.href = fileURL;
+                anchor.click();
+                // window.open(fileURL);
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+                this.download_ = false;
+            } else {
+                this.activityManager.engApplication.notifyMessage('Nessun file presente');
+                this.download_ = false;
+            }
+        });
+
+    }
+
+
+
+/**
+     * Load AutoComplete (this.options) [CODICE]
+     * @param error
+     */
+    caricaCombo(error?: string): Promise<any> {
+        this.filterErrorCombo.errorCode = "Tutte";
+        if (error){
+            this.filterErrorCombo.errorCode = error;
+        }
+        this.showLoadingIndicator = true;
+        this.flag = false;
+        this.filterErrorCombo.flow = this.fmflow;
+        this.flowConfigurationService.flowErrors(this.filterErrorCombo).then(result => {
+            if (result.success) {
+                //Caricamento combo;
+                if( this.options.length==0) {
+                    for (let i = 0; i < result.opTargetObject.objectList.length; i++) {
+                        //if(this.startingParams.editItem.extra == "error_reg" || this.startingParams.editItem.extra == "segnalazioni_reg"){
+                        //  this.options.push(result.opTargetObject.objectList[i][1]);
+                        //}else{
+                          this.options.push(result.opTargetObject.objectList[i][0]);
+                        //}
+                    }
+                   }
+                this.filteredOptions = this.myControl.valueChanges
+                    .pipe(
+                        startWith(''),
+                        map(value => this._filter(value))
+                    );
+            } else {
+                this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento Combo Ricerca');
+            }
+            this.showLoadingIndicator = false;
+        }).catch(() => {
+            this.showLoadingIndicator = false;
+            this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento Combo Ricerca');
+        });
+        return Promise.resolve();
+    }
+
+    ricercaConf(): Promise<any> {
+        this.showLoadingIndicator = true;
+        this.flag = false;
+        this.filterError.flow = this.fmflow;
+        this.filterError.accordionPag=false;
+        this.filterError.firstResultAcc = 0;
+        this.firstResultDisplayAcc = this.filterError.firstResultAcc + 1;
+        
+        this.flowConfigurationService.flowErrors(this.filterError).then(result => {
+            if (result.success) {
+              this.map = result.opTargetObject.objectList;
+              this.displayedColumns = this.generaColonne();
+              this.dataSource = new MatTableDataSource<any>(this.generateDatasource());
+              this.totalItems = result.opTargetObject.countTotal;
+              if(this.totalItems<=10){
+                this.endPage = this.totalItems;
+                this.blockRight = true;
+              }
+              if(this.filterError.firstResult<=1){
+                this.blockLeft = true;
+              }else{
+                this.blockLeft = false;
+              }
+              if(this.endPage>=this.totalItems){
+                this.blockRight = true;
+              }else{
+                this.blockRight = false;
+              }
+
+              this.caricaCombo("Tutte");
+            } else {
+
+              let errorMsg = '';
+
+                // 🔹 Controllo multilivello su array errors → text → content
+                if (result.errors) {
+                  const errors = Array.isArray(result.errors) ? result.errors : [result.errors];
+                  for (const err of errors) {
+                    if (err.text) {
+                      const texts = Array.isArray(err.text) ? err.text : [err.text];
+                      for (const txt of texts) {
+                        if (txt.content) {
+                          const contents = Array.isArray(txt.content) ? txt.content : [txt.content];
+                          for (const c of contents) {
+                            if (c.text && c.text.trim() !== '') {
+                              errorMsg = c.text.trim();
+                              break;
+                            }
+                          }
+                        }
+                        if (errorMsg) break;
+                      }
+                    }
+                    if (errorMsg) break;
+                  }
+                }
+
+                //Se non è stato trovato alcun messaggio valido
+                if (!errorMsg || errorMsg.trim() === '') {
+                  errorMsg = 'Errore in fase di ricezione delle pratiche';
+                }
+
+                //this.activityManager.engApplication.notifyMessage('Errore nella definizione della Query Detail Header Personalizzata : ' + errorMsg);
+                this.notifyMessage(errorMsg);
+            }
+            this.showLoadingIndicator = false;
+          }).catch(() => {
+          this.showLoadingIndicator = false;
+          this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento delle colonne');
+        });
+        return Promise.resolve();
+    }
+  
+    generaColonne(): string[] {
+      let colonne: string[] = [];
+      colonne.push("EXPAND","CODICE","DESCRIZIONE","GRAVITA","NUMERO ERRORI");
+      return (colonne);
+    }
+
+    generateDatasource():Array<any>{
+      let data = new Array();
+      this.totalRecord = this.map.length;
+      let columnValue = null;
+      for(let z = 0; z < this.map.length; z++){
+        data[z] = {};
+        for(let i = 0; i < this.map[z].length; i++){
+          columnValue = this.map[z][i];
+          if(this.isDate(columnValue)){
+            columnValue = this.dateConvert(columnValue);
+          }
+          let columnName = this.displayedColumns[i+1];
+          data[z][columnName] = columnValue;
+        }
+      }
+      return data;
+    }
+
+    isDate(value) {
+      return value instanceof Date;
+    }
+  
+    dateConvert(date): string {
+      return this.leftpad(date.getDate())
+                + '-' + this.leftpad(date.getMonth() + 1, 2)
+                + '-' + this.leftpad(date.getFullYear(), 2)
+                ;
+    }
+    
+    leftpad(val, resultLength = 2, leftpadChar = '0'): string {
+      return (String(leftpadChar).repeat(resultLength)
+            + String(val)).slice(String(val).length);
+    }
+
+    getVersionName(): void{
+
+      this.flowConfigurationService.getVersionNameById(this.fmflow)
+      .then(result => {
+          if (result.success) {
+             this.version = result.opTargetObject;
+             this.activity.title = "!i18n#" + this.fmflow.name + " " + this.version;
+          } else {
+              this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento delle colonne');
+          }
+      })
+      .catch(e => {
+        this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento delle colonne');
+      }
+      ); 
+    }
+
+    getPratiche($event, section: any) {
+      this.codice = section["CODICE"];
+      if(this.expandedElement){
+        this.filterError.accordionPag=true;
+
+        
+
+        this.filterError.message = section["CODICE"];
+        this.filterError.errorCode = section["CODICE"];
+        this.filterError.flow = this.fmflow;
+    
+        this.flowConfigurationService.flowPratica(this.filterError)
+          .then(result => {
+              if (result.success) {
+                this.mapPratiche = result.opTargetObject.objectList;
+                this.countPratiche = result.opTargetObject.countTotal;
+                this.pkName = result.opTargetObject.pkList;
+                this.queryDetail = result.opTargetObject.queryDetail;
+                this.displayedColumnsPratiche = this.generaColonnePratiche(result.opTargetObject.praticaViewFieldsDescription, result.opTargetObject.praticaViewFields);
+                this.dataSourcePratiche = new MatTableDataSource<any>(this.generateDatasourcePratiche());
+
+                if(this.sectionBA==undefined || section!=this.sectionBA){
+                  this.sectionBA = section;
+                  this.flag = false;
+                  this.filterError.firstResultAcc = 0;
+                  this.firstResultDisplayAcc = this.filterError.firstResultAcc + 1;
+                  this.blockLeftAcc = true;
+                  if(this.countPratiche>=5){
+                    this.endPageAcc = 5;
+                    this.blockRightAcc = false;
+                  }else{
+                    this.endPageAcc = this.countPratiche; 
+                    this.blockRightAcc = true;
+                  }
+                }else if(this.sectionBA!=undefined || section==this.sectionBA){
+                  if(this.filterError.firstResultAcc<1){
+                    this.blockLeftAcc = true;
+                  }else{
+                    this.blockLeftAcc = false;
+                  }
+                  if(this.countPratiche>=5 && !this.flag){
+                    this.endPageAcc = 5;
+                    this.blockRightAcc = false;
+                  }else if(this.countPratiche<5 && !this.flag){
+                    this.endPageAcc = this.countPratiche; 
+                    this.blockRightAcc = true;
+                  }
+                }
+
+
+              } else {
+                let errorMsg = '';
+
+                // 🔹 Controllo multilivello su array errors → text → content
+                if (result.errors) {
+                  const errors = Array.isArray(result.errors) ? result.errors : [result.errors];
+                  for (const err of errors) {
+                    if (err.text) {
+                      const texts = Array.isArray(err.text) ? err.text : [err.text];
+                      for (const txt of texts) {
+                        if (txt.content) {
+                          const contents = Array.isArray(txt.content) ? txt.content : [txt.content];
+                          for (const c of contents) {
+                            if (c.text && c.text.trim() !== '') {
+                              errorMsg = c.text.trim();
+                              break;
+                            }
+                          }
+                        }
+                        if (errorMsg) break;
+                      }
+                    }
+                    if (errorMsg) break;
+                  }
+                }
+
+                //Se non è stato trovato alcun messaggio valido
+                if (!errorMsg || errorMsg.trim() === '') {
+                  errorMsg = 'Errore in fase di ricezione delle pratiche';
+                }
+
+                //this.activityManager.engApplication.notifyMessage('Errore nella definizione della Query Detail Personalizzata : ' + errorMsg);
+                this.notifyMessage(errorMsg);
+              }
+          })
+          .catch(e => {
+            this.activityManager.engApplication.notifyMessage('Errore in fase di ricezione delle pratiche');
+          }
+        );
+      }
+    }
+    
+    generaColonnePratiche(colonneMap: any, nameMap: any): string[] {
+      this.colMap = [];
+      let cols = Object.keys(colonneMap);
+      let colsMap = Object.keys(nameMap);
+      for(let i=0; i<colsMap.length; i++){
+        let colHeader = new header();
+        colHeader.name = nameMap[colsMap[i]];
+        colHeader.description = colonneMap[cols[i]].toUpperCase();
+        this.colMap.push(colHeader);
+      }
+      //se è stata impostata la query dinamica non includo il campo numero errori
+      if (!this.queryDetail) {
+        let colHeader1 = new header();
+        colHeader1.name = "NUMERO ERRORI";
+        colHeader1.description = "NUMERO ERRORI";
+        this.colMap.push(colHeader1);
+      }
+      //if(this.filterError.region == undefined){
+        let colHeader4 = new header();
+        colHeader4.name = "LINK";
+        colHeader4.description = "LINK";
+        this.colMap.push(colHeader4);
+        let colHeader2 = new header();
+        colHeader2.name = "FLOWVIEW";
+        colHeader2.description = "FLOWVIEW";
+        this.colMap.push(colHeader2);
+      //}
+      let colHeader3 = new header();
+      colHeader3.name = "LIST";
+      colHeader3.description = "LIST";
+      this.colMap.unshift(colHeader3);
+
+    return (this.colMap.map(col => col.name)); 
+    }
+    
+    generateDatasourcePratiche():Array<any>{
+      
+      let data = new Array();
+      let columnValue = null;
+      for(let z = 0; z < this.mapPratiche.length; z++){
+        data[z] = {};
+        for(let i = 0; i < this.mapPratiche[z].length; i++){
+          columnValue = this.mapPratiche[z][i];
+          if(this.isDate(columnValue)){
+            columnValue = this.dateConvert(columnValue);
+          }
+            let columnName = this.displayedColumnsPratiche[i+1];
+            data[z][columnName] = columnValue;
+        }
+      }
+      return data;
+    }
+
+    goToPratica(psAction: String, $event, elementPratiche: any): void {
+
+      let starterParams: any = this.activity.startingParams;    
+      starterParams.editItem = this.fmflow;
+      starterParams.extra = elementPratiche;
+      starterParams.extra2 = this.codice;
+      starterParams.extraMonth = this.filterError.month;
+      starterParams.extraYear = this.filterError.year;
+      starterParams.region = this.filterError.region;
+
+      starterParams.extraMonthFrom = this.filterError.extraMonthFrom;
+      starterParams.extraMonthTo = this.filterError.extraMonthTo;
+      starterParams.canViewMonthFromToFilters = this.filterError.canViewMonthFromToFilters;
+      starterParams.extraFilter = this.filterError.extraFilter;
+
+      this.activity.startingParams.popupHeight = '700px';
+      this.activity.startingParams.popupWidth = '1300px';
+      this.activityManager.startChildPopupActivityByName("flow-error-detail.edit", starterParams);
+    }
+
+    getServerDataLeft(){
+      if(this.filterError.firstResult>0){
+        this.filterError.firstResult = this.filterError.firstResult - 10;
+        this.endPage = this.filterError.firstResult + 10;
+        this.firstResultDisplay = this.filterError.firstResult + 1;
+        this.ricercaConf();
+      }
+    }
+
+    getServerDataRight(){
+      if(this.endPage <= this.totalItems-1){
+        this.filterError.firstResult = this.filterError.firstResult + 10;
+        if(this.totalItems<this.filterError.firstResult + 10){
+          this.endPage = this.totalItems;
+        }else{
+          this.endPage = this.filterError.firstResult + 10;
+        }
+        this.firstResultDisplay = this.filterError.firstResult + 1;
+        this.ricercaConf();
+      }
+    }
+
+    getServerDataLeftAcc($event, section: any){
+      if(this.filterError.firstResultAcc>0){
+        this.blockRightAcc = false;
+        this.flag = true;
+        this.filterError.firstResultAcc = this.filterError.firstResultAcc - 5;
+        this.firstResultDisplayAcc = this.filterError.firstResultAcc + 1;
+        this.endPageAcc = this.filterError.firstResultAcc + 5;
+        this.getPratiche($event, section);
+      }
+    }
+
+    getServerDataRightAcc($event, section: any){
+      if(this.endPageAcc< this.countPratiche){
+        this.flag = true;
+        this.filterError.firstResultAcc = this.filterError.firstResultAcc + 5;
+        this.firstResultDisplayAcc = this.filterError.firstResultAcc + 1;
+        if(this.filterError.firstResultAcc + 5 < this.countPratiche){
+          this.endPageAcc = this.filterError.firstResultAcc + 5;
+        }else{
+          this.endPageAcc = this.countPratiche;
+          this.blockRightAcc = true;
+        }
+        this.getPratiche($event, section);
+      }
+    }
+
+    unique(origArr) {
+      let newArr = [],
+          origLen = origArr.length,
+          found, x, y;
+  
+      for (x = 0; x < origLen; x++) {
+          found = undefined;
+          for (y = 0; y < newArr.length; y++) {
+              if (origArr[x] === newArr[y]) {
+                  found = true;
+                  break;
+              }
+          }
+          if (!found) {
+              newArr.push(origArr[x]);
+          }
+      }
+      return newArr;
+  }
+
+  isEditModeEdit(){
+    return false;
+}
+
+
+    private _filterStates(value: string): String[] {
+        const filterValue = value.toLowerCase();
+        return this.states.filter(state => state.toLowerCase().indexOf(filterValue) === 0);
+    }
+
+    startSearch() {
+      // Reset impaginazione
+      this.filterError.firstResult = 0;
+      this.filterError.maxResult = 10;
+      this.firstResultDisplay = this.filterError.firstResult + 1;
+      this.endPage = Math.min(this.totalItems || 10, this.filterError.maxResult);
+
+      // Imposta i parametri di ricerca
+      this.filterError.errorCode = this.error && this.error.trim() !== '' ? this.error.trim() : 'Tutte';
+      this.filterError.tipoImportazione = this.tipoImportazione && this.tipoImportazione.trim() !== '' 
+        ? this.tipoImportazione.trim() 
+        : null;
+      this.filterError.codicePresidio = this.codicePresidio && this.codicePresidio.trim() !== '' 
+      ? this.codicePresidio.trim()
+      : null;
+
+      this.filterError.codiceAzienda = this.codiceAzienda && this.codiceAzienda.trim() !== ''
+      ? this.codiceAzienda.trim()
+      : null;
+      
+      this.filterError.message = this.filterError.errorCode;
+
+      // Esegui la ricerca
+      this.ricercaConf();
+    }
+
+    /**
+     * 🔹 Quando cambia il Codice Azienda:
+     * - resetta Codice Presidio
+     * - aggiorna i filtri relativi
+     * - ricarica la lista dei presidi filtrata per azienda
+     * - avvia la ricerca automatica
+     */
+    onCodiceAziendaChange(event: any): void {
+      const nuovaAzienda = event.value;
+
+      // 1️⃣ Aggiorna codice azienda
+      this.codiceAzienda = nuovaAzienda;
+      this.filterError.codiceAzienda =
+        nuovaAzienda && nuovaAzienda.trim() !== "" ? nuovaAzienda.trim() : null;
+      this.fmflow.codiceazienda = this.filterError.codiceAzienda;
+
+      // 2️⃣ Svuota codice presidio
+      this.codicePresidio = "";
+      this.filterError.codicePresidio = null;
+
+      // 3️⃣ Ricarica la lista dei presidi filtrata per azienda
+      this.loadCodiciPresidio();
+
+      // 4️⃣ Avvia la ricerca aggiornata
+      this.startSearch();
+    }
+
+    resetSearch() {
+        this.error = "";
+        this.tipoImportazione = null;
+        this.myControl.setValue("");
+        this.filterError.errorCode = null;
+        this.filterError.message = null;
+        this.filterError.tipoImportazione = null;
+        this.filterError.firstResult = 0;
+        this.filterError.maxResult = 10;
+        this.endPage = this.filterError.maxResult;
+        this.codicePresidio = null;
+        this.filterError.codicePresidio = null;
+        this.codiceAzienda = null;
+        this.filterError.codiceAzienda = null;
+        this.fmflow.codiceazienda = null;
+        this.loadCodiciAzienda();
+        this.loadCodiciPresidio();
+        this.ricercaConf();
+    }
+
+    goToFlowView(element){
+      let cols = Object.keys(element);
+      let filterPk: any = new Object;
+      for(let i=0; i<this.pkName.length; i++){
+        for(let j=0; j<cols.length; j++){
+          if(this.pkName[i].substring(0,this.pkName[i].length) == cols[j]){
+            filterPk[this.pkName[i]] = element[cols[j]];
+          }
+        }
+      }
+      let starterParams: any = this.activity.startingParams;
+      starterParams.extra = filterPk;
+      starterParams.editItem = this.fmflow;
+      this.activityManager.startChildActivityByName("flow-view.edit", starterParams);
+    }
+
+    openExternalActivity(element: any){
+
+      this.getContextParam(element);
+  
+    }
+
+    getContextParam(element: any){
+
+      let keys: String[][] = []
+  
+      for(let i=0; i<this.pkName.length; i++){
+        keys[i] = []
+        keys[i][0] = this.pkName[i];
+        keys[i][1] = element[this.pkName[i]];
+        if (keys[i][1]==undefined) {
+          keys[i][1] = element[this.pkName[i].substring(0,this.pkName[i].length-1)];
+        }
+      }
+      
+      this.flowConfigurationService.getContextParam(this.fmflow.code, keys)
+      .then(result => {
+          if (result.success) {
+            
+            let activity = result.opTargetObject.activity;
+
+            let isNew = result.opTargetObject.disableDefaultLanding;
+
+            let param: any = {};
+
+            if (isNew !== undefined && isNew === true) {
+              param.extra = {};
+              param.extra._disableDefaultLanding = result.opTargetObject.disableDefaultLanding;
+              param.mainObjectKey = result.opTargetObject.params.mainObjectKey;
+            } else {
+              param.extra = result.opTargetObject.params;
+            }
+  
+            if(this.startingParams.editItem.extra == "popup-extr"){    
+                param.popupHeight = '700px';
+                param.popupWidth = '1300px';
+                this.activityManager.startChildActivityByName(activity, param);
+      
+            }else{
+      
+                this.activityManager.startChildActivityByName(activity, param);
+            }
+           
+          } else {
+              this.activityManager.engApplication.notifyMessage('Errore caricamento paramentri');
+          }
+      })
+      .catch(e => {
+        this.activityManager.engApplication.notifyMessage('Errore caricamento paramentri');
+      }
+      ); 
+    }
+
+    goToLastPage(){
+      if(!this.blockRight){
+        let mod = this.totalItems % 10;
+        if(mod != 0){
+          this.filterError.firstResult = this.totalItems - mod;
+        }else{
+          this.filterError.firstResult = this.totalItems - this.filterError.maxResult;
+        }
+        this.endPage = this.totalItems;
+        this.firstResultDisplay = this.filterError.firstResult + 1;
+        this.ricercaConf();
+      }
+    }
+
+    goToFirstPage(){
+      if(!this.blockLeft){
+        this.filterError.firstResult = 0;
+        this.filterError.maxResult = 10;
+        if(this.totalItems<=this.filterError.maxResult){
+          this.endPage = this.totalItems;
+        }else{
+          this.endPage = this.filterError.maxResult
+        }
+        this.firstResultDisplay = this.filterError.firstResult + 1;
+        this.ricercaConf();
+      }
+    }
+
+}

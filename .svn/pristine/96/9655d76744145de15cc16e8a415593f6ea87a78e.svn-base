@@ -1,0 +1,31 @@
+<div class="background">
+<mat-card class="driver-card">
+<div class="eng-classic-form">
+    <h3 *ngIf="isEditModeEdit()" fxFlex="100">{{'EDIT' | translate}}</h3>
+    <h3 *ngIf="isEditModeInsert()" fxFlex="100">{{'INSERT' | translate}}</h3>
+    <eng-text-field  fxFlex='40'
+                     required="true"
+                     maxlength="100"
+                     label='DR_LABEL_NAME'
+                     property="name">
+    </eng-text-field>
+
+    <eng-text-field  fxFlex='40'
+                     [style.padding-bottom]="'25px'"
+                     required="true"
+                     maxlength="100"
+                     label='DR_LABEL_DESCRIPTION'
+                     property="description">
+    </eng-text-field>
+
+    <eng-attach-field
+            label="!i18n#Attach"
+            property="attach">
+            <!--[fieldStyle]="formValue('style')">-->
+            <!--[readonly]="isReadonly()">-->
+    </eng-attach-field>
+
+
+</div>
+</mat-card>
+</div>

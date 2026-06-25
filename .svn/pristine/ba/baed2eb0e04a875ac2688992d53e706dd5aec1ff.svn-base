@@ -1,0 +1,802 @@
+export class FmFlow {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  descrb:string;
+  status: boolean;
+  remoteSend: boolean;
+  uniqueness: boolean;
+  scheduling: boolean;
+  periodicy: string;
+  monthlyDeadline: Date;
+  version: string;
+  commProt: number;
+  yearlyDeadline: string;
+  flowType: string;
+  flowTypeBoolean: boolean;
+  flowTableList: FlowTable[] = [];
+  codiceazienda: string;
+}
+
+export class FlowTable {
+  id: string;
+  name: string = "Sezione";
+  description: string = "";
+  section: number = 0;
+  datasource: any;
+  flowTableFieldList: FlowTableField[] = [];
+  listFk: FlowTableLink[] = [];
+  required: boolean;
+}
+
+
+export class FlowTableField {
+  id: string;
+  name: string = "";
+  description: string = "";
+  descriptionsm: string = "";
+  position: number = 0;
+  fieldType: string = "String"
+  pk: boolean = false;
+  flowTableFieldId: string = "";
+  length: number;
+  physicalSize:number;
+  mandatory: boolean = false;
+  regExp: string = "";
+  referenceDate: boolean = false;
+  groups: Boolean = false;
+  crypto: Boolean = false;
+  active: Boolean = true;
+
+}
+
+export class FlowTableLink {
+  idTable: string = "";
+  idTableReferenced: string = "";
+  idFieldTable: string = "";
+  idFieldTableReferenced: string = "";
+  jsonFieldType: string = "";
+  jsonField: string = "";
+}
+
+export class Version {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  startDate: Date;
+  endDate: Date;
+  creationDate: Date;
+  //flows: FmFlow[] = [];
+}
+
+export class ProfiloFlussi {
+  role: string;
+  organization: string;
+  site: string;
+  consolidamento: Date;
+  //flows: FmFlow[] = [];
+}
+
+//TABGEN
+export class AnagraficaTable {
+  id: string;
+  description: string;
+  fieldNum: number;
+  visible: number;
+  type: string;
+  tabgenFields: TabgenField[] = [];
+  tabgenValues: TabgenValue[] = [];
+}
+export class TabgenField {
+  description: string;
+  format: string;
+  id: string;
+  nullable: boolean;
+  pk: boolean;
+  progressive: number = null;
+  tabgenValueColumn: string;
+  type: string;
+  visible: number;
+}
+export class TabgenValue {
+  id: string;
+  alwaysEnabled: number;
+  enabledDate: Date;
+  disabledDate: Date;
+  field1: string;
+  field2: string;
+  field3: string;
+  field4: string;
+  field5: string;
+  field6: string;
+  field7: string;
+  field8: string;
+  field9: string;
+  field10: string;
+  field11: string;
+  field12: string;
+  field13: string;
+  field14: string;
+  field15: string;
+  tabgen: AnagraficaTable;
+}
+
+export class Filter {
+  flow: string = "";
+  version: string = "";
+  date: string[] = [];
+  dateFrom: Date[] = [];
+  dateTo: Date[] = [];
+  status: string = "";
+  record: string = "";
+  flowName: string = "";
+  versionName: string = "";
+  jobTalendId: string = "";
+}
+
+export class FlowNative {
+  id: string = "";
+  code: string = "";
+  name: string = "";
+  flowType: string;
+  description: string = "";
+  status: boolean = false;
+  remoteSend: boolean = false;
+  uniqueness: boolean = false;
+  scheduling: boolean = false;
+  periodicy: string = "";
+  monthlyDeadline: string = "";
+  versions: Version[] = [];
+  profiloFlussi: ProfiloFlussi[] = [];
+}
+
+export class FlowImportRequestFieldDateDTO {
+  id: string;
+  id_field: string = "";
+  date_to: Date;
+  date_from: Date;
+}
+
+export class FlowExtract {
+  id: string = "";
+  importingUser: string = "";
+  flow: FlowNative;
+  version: Version;
+  flowER: FlowNative;
+  versionER: Version;
+  dateFields: FlowImportRequestFieldDateDTO[] = [];
+  status: string = "";
+  record: string = "";
+  requestDate: Date;
+  endExtractionDate: Date;
+}
+
+export class FilterValid {
+  flowId: string;
+  versionId: string;
+  field: FilterFlowField[];
+  importId: string;
+}
+
+export class FilterError {
+  flow: FmFlow;
+  index: number;
+  pkList: string[];
+  pkNameList: string[];
+  message: string;
+  topFive: boolean;
+  praticheTot: string;
+  errorCode: string;
+  month: string;
+  year: string;
+  firstResult: number;
+  maxResult: number;
+  firstResultAcc: number;
+  maxResultAcc: number;
+  firstResultReg: number;
+  maxResultReg: number;
+  accordionPag: boolean;
+  accordionReg: boolean;
+  view: boolean;
+  region: string;
+  filters: any;
+  extractionId: string;
+  extraMonthFrom: string;
+  extraMonthTo: string;
+  extraDateFrom: string;
+  extraDateTo: string;
+  canViewMonthFromToFilters: boolean;
+  canViewDateFromToFilters: boolean;
+  extraFilter: ExtraFilter[];
+  detailErr: boolean = false;
+  extractionIdFromGrid: string;
+  name: any;
+  tipoImportazione: string;
+  codicePresidio: string;
+  codiceAzienda: string;
+  checkType: string;
+}
+
+export class FilterFlow {
+  flow: FmFlow;
+  firstResult: number;
+  maxResult: number;
+  firstResultAcc: number;
+  maxResultAcc: number;
+  field: FilterFlowField[];
+  fieldData: FilterFlowFieldData[];
+  // param: string[];
+  // dateIn: Date[];
+  // dateOut: Date[];
+  importId: string;
+  fkFields: string[];
+  fkValues: string[];
+  paginated: boolean;
+  count: boolean;
+  sortField: string;
+  sortDir: string;
+  sortSez: string;
+  drg: string;
+  scartiRegione: boolean;
+  tipoImportazione: string;
+  region: string;
+  codicePresidio: string;
+  codiceAzienda: string;
+}
+
+export class FilterFlowField {
+  name: string;
+  section: string;
+  param: string;
+}
+
+export class FilterFlowFieldData {
+  name: string;
+  section: number;
+  position: number;
+  dateIn: Date;
+  dateOut: Date;
+}
+
+export class FlowExport_old {
+  id: string = "";
+  importingUser: string = "";
+  flow: FlowNative;
+  version: Version;
+  dateField: string = "";
+  dateFieldFrom: string = "";
+  dateFieldTo: string = "";
+  status: string = "";
+  record: string = "";
+  requestDate: Date;
+  endExtractionDate: Date;
+  jobTalendId: JobTalend = new JobTalend();
+}
+
+export class JobTalend {
+  id: string;
+  name: string;
+  flow: FlowNative;
+  version: Version;
+  type: string;
+  className: string;
+  description: string;
+  packageJob: string;
+  deleted: boolean;
+  forceUpdate: boolean;
+}
+
+export class DroolsFile {
+  ruleId: string;
+  flowName: string;
+  flowId: string;
+  flowDescription: string;
+  flowType: string;
+  versionName: string;
+  versionDescription: string;
+  versionId: string;
+  numberOfRules: number;
+}
+
+export class RulesDownloadRequest {
+  flowId: string;
+	versionId: string;
+	ruleId: string;
+}
+
+export class FlowOperationResult {
+  success: Boolean;
+  message: string;
+  messages: string[];
+}
+
+export class RulesUploadResponse {
+  success: boolean;
+	message: string;
+	messages: string[];
+}
+
+export class FlowConfigurationFilter {
+  id: string;
+  name: string;
+  version: Version;
+  flow: FlowNative;
+  type: number;
+  fields: FlowConfigurationFilterField[][] = [];
+}
+
+export class FlowConfigurationFilterField {
+  id: string;
+  position: string;
+  name: string;
+  range: Boolean = false;
+  mandatory: Boolean = false;
+  filterType: string;
+  filterTable: string;
+  filterField: string;
+  tableFieldFilter: TabgenFieldFilter[] = [];
+    tabgenValueFilter: string[] = [];
+    singleValue: string;
+    multiValues: string[] = [];
+    dateFromValue: Date;
+    dateToValue: Date;
+    numFromValue: string;
+    numToValue: string;
+
+    configurationId: string;
+}
+
+export class FlowConfigurationFilterFieldValue {
+    id: string;
+    value: string = null;
+    singleValue: string;
+    multiValues: string[] = [];
+    dateFromValue: Date;
+    dateToValue: Date;
+    numFromValue: string;
+    numToValue: string;
+    exportId: string;
+    filterId: string;
+
+}
+
+export interface TabgenTableFilter {
+  description: string;
+  code_desc: string;
+  field_num: number;
+  visible: number;
+  type: string;
+  id: string;
+}
+
+export interface TabgenFieldFilter {
+  id: string;
+  description: string;
+  progressive: number;
+  type: string
+  format: string;
+  visible: number;
+  tabgen_field_id: string;
+  pk: number;
+  nullable: number;
+  tabgen_value_colum: string;
+  tf_id: string;
+}
+
+export class FlowExport {
+
+  id: string;
+  flow: FlowNative;
+  version: Version;
+  requester: string;
+  record: string;
+  status: string;
+  requestDate: Date;
+  startExtractionDate: Date;
+  endExtractionDate: Date;
+  jobTalendId: JobTalend;
+  flowConfigurationFilters: FlowConfigurationFilter[] = [];
+  flowConfigurationFilterFieldValues: FlowConfigurationFilterFieldValue[] = [];
+  flowErrorDetails: String[] = [];
+  schedulingType: string;  // manuale, istantanea, una volta, periodica
+  schedulingTypeDescr: string;  // manuale, istantanea, una volta, periodica
+  schedulingStartingTime: Date; // usato per una volta e periodica
+  schedulingNextTime: Date;
+  schedulingInterval: string; // giornaliero, settimanale, mensile, annuale
+  validationStatus: string;
+  validationStatusDrl: string;
+  consolidata: boolean;
+  userCons: string;
+  dateCons: Date;
+  regionValidationStatus : string;
+  drg: boolean;
+  lastUploadReturnsRequest : UploadReturnsRequest;
+  schedulingIntervalMinutes: number;
+  schedulingIntervalSeconds: number;
+}
+
+export class Dashboard {
+  id: String;
+  month: number;
+  year: number;
+  label: String;
+  value: String;
+  widgetName: String;
+  lastUpdate: Date;
+  flow:String;
+  tooltip: String;
+}
+
+export class TypeField{
+  value: string;
+  viewValue: string;
+}
+
+
+export interface UserDTO {
+  username:string;
+  name:string;
+  surname:string;
+
+}
+
+export class DashboardPratiche {
+
+  id: String;
+  flowName: String;
+  day1: number;
+  day2: number;
+  day3: number;
+  day4: number;
+  day5: number;
+  day6: number;
+  day7: number;
+  lastUpdate: Date;
+}
+
+export class DashboardErrors{
+  id: String;
+  flowName:String;
+  error: String;
+  countError: number;
+  lastUpdate: Date;
+  description:String;
+
+}
+
+export class MotherDashboard{
+
+flow: String;
+countPraticheThisYear:number;
+countPraticheLastYear:number;
+totalThisYear:number;
+totalLastYear:number;
+lastUpdate: Date;
+lastFinalUpdate:String;
+percentPratiche:String;
+percentTotal:String;
+arrowPratiche:String;
+arrowTotal:String;
+percentRegionPratiche:String;
+percentRegionTotal:String;
+arrowRegionPratiche:String;
+arrowRegionTotal:String;
+countPrtaicheRegioneThisYear:number;
+countPrtaicheRegioneLastYear:number;
+totalRegioneThisYear  :number;
+totalRegioneLastYear:number;
+
+}
+
+export class FlowRegionUnion {
+    id: string;
+    flowLocal: FlowNative;
+    flowRegion: FlowNative;
+}
+
+export class RegionReturns {
+  columns: string[] = [];
+  values: Map<string, string>[]; 
+}
+
+
+/**
+ * Enums
+ */
+export enum FilterFieldType {
+  Text = "Text",
+  Date = "Date",
+  Numeric = "Numeric",
+  Campi = "Campi",
+  ComboBox = "ComboBox",
+  Radio = "Radio",
+  Multi = "Multi",
+  Lookup = "Lookup"
+}
+
+export enum FilterType {
+  Static = "Static",
+  Dinamic = "Dinamic"
+}
+
+export enum TabgenType {
+  Filtri = "Filtri",
+  Anagrafica = "Anagrafica"
+  //...
+}
+
+export enum State {
+  Corrette = "Corrette",
+  Non_Inviate = "Mai Inviate",
+  Inviate = "Già Inviate",
+  Tutte = "Tutte"
+}
+export enum MachineState {
+    RICHIESTA = "RICHIESTA",
+    TERMINATA_OK = "TERMINATA_OK",
+    TERMINATA_KO = "TERMINATA_KO",
+    CANCELLATA = "CANCELLATA",
+    IN_CORSO = "IN_CORSO",
+    ANNULLATA = "ANNULLATA",
+    ANNULAMENTO_IN_CORSO = "ANNULAMENTO_IN_CORSO",
+    ANNULAMENTO_OK = "ANNULAMENTO_OK",
+    ANNULAMENTO_KO = "ANNULAMENTO_KO"
+}
+
+export enum FileUploadState {
+  LOADED = "CARICATO", 
+  COMPLETE = "COMPLETO",
+  INCOMPLETE = "INCOMPLETO",
+  WELL_FORMED = "BEN FORMATO",
+  NOT_WELL_FORMED = "NON BEN FORMATO",
+  VALIDATED = "VALIDATO",
+  VALIDATION_ERROR = "VALIDAZIONE FALLITA",
+  ANNULLA_TERMINATA_KO = "ERRORE INSERIMENTO DATI",
+  IN_IMPORT = "IN FASE DI IMPORTAZIONE"
+}
+
+export enum FilterFieldStandard {
+  Numero_Invio = "Numero_Invio",
+  Flusso = "Flusso",
+  Data_Inizio_P1 = "Data Inizio P1",
+  Data_Fine_P1 = "Data Fine P1",
+  Stato_P1 = "Stato P1",
+  Data_Inizio_P2 = "Data Inizio P2",
+  Data_Fine_P2 = "Data Fine P2",
+  Stato_P2 = "Stato P2",
+  Data_Inizio_P3 = "Data Inizio P3",
+  Data_Fine_P3 = "Data Fine P3",
+  Stato_P3 = "Stato P3"
+}
+
+export enum PermissionTypeEnum {
+  OPERATION = "OPERATION"
+
+}
+
+export enum PermissionNameEnum {
+  ANAGRAFICA_MODIFICA = "FlowManager.tabgen.modifica"
+
+}
+
+export class Header{
+  [x: string]: any;
+  visible: boolean = false;
+  label: string = "";
+  }
+
+export class DashboardConfig{
+   id : String;
+   flow : FmFlow;
+   name: String;
+   query: String ;
+   label: String ;
+   icon: String ;
+   color: String ;
+   badge: String ;
+   footer: String ;
+   value: String;
+  activity: String;
+  tooltip: String;
+}
+
+export class SearchPatient{
+  flow : FmFlow;
+  columns: String[] = [];
+  columnDescriptions: String[] = [];
+  rows: any[][] = [];
+  name: String ;
+  surname: String ;
+  taxCode: String ;
+  birthDate: Date;
+}
+
+export class SearchFlowPatientFilter{
+  flow : FmFlow;
+  filters: Map<String,String>;
+}
+
+export class xsdTalend{
+  xsd: any;
+  sez: any;
+}
+
+export interface StateChips {
+  name: string;
+  code:string;
+  selected: boolean;
+}
+
+export interface Message {
+  message: string,
+  fromId: string,
+  toId: string,
+}
+
+export class header {
+  name: string;
+  description: string;
+}
+
+export class UploadRequest {
+  id: string;
+  flow: FlowNative;
+  version: Version;
+  username: string;
+  creationDate: Date;
+  validationDate: Date;
+  status: string;
+  files: FlowSectionFile[];
+  errors: FlowFileUploadError[];
+}
+
+export class FlowSectionFile {
+  id: string;
+  section: number;
+	file: SectionFile;
+}
+
+export class SectionFile {
+  id: string;
+  file: any;
+  wellFormedFile: any;
+}
+
+export class FlowFileUploadError {
+  id: string;
+  request: UploadRequest;
+  error: string;
+  section: number;
+  indexRecord: number;
+}
+
+export class FlowDrg {
+  id: string;
+  extraction: FlowExport;
+  sendDate: Date;
+  returnDate: Date;
+  error: string;
+  state: string;
+  numPratiche: string;
+}
+
+export class AnagraficaAssistitoDTO{
+  id: string;
+  nome:string = "";
+  cognome:string = "";
+  datanascita:Date = null;
+  comunenascita:string = "";
+  comunenascitaCodeField:string;
+  comunenascitaDescriptionField:string;
+  sesso:string = "";
+  sessoDescrizione:string = "";
+  codiceFiscale:string = "";
+  codicePaziente:string = "";
+  comuneResidenza:string = "";
+  comuneResidenzaCodeField:string;
+  comuneResidenzaDescriptionField:string;
+  nazionalita:string = "";
+  nazionalitaCodeField:string;
+  nazionalitaDescriptionField:string;
+  abilitazione:number|string;
+  abilitazioneDescrizione:string = "";
+  aslResidenza :string ="";
+  aslResidenzaCodeField :string;
+  aslResidenzaDescriptionField :string;
+}
+
+export class FilterAnagraficaAss{
+  firstResult : number = 0;
+  maxResult : number;
+  paginated : boolean;
+}
+
+export class AnagraficaAssistitoPagination{
+  anagraficaData : AnagraficaAssistitoDTO[];
+  allPages : number;
+}
+
+export class AnagraficaAssistitoDownload{
+  anagraficaData : AnagraficaAssistitoDTO[];
+  selectedOption : string;
+  filterValue : string;
+}
+
+export class SdoMonitorXl{
+  id : string	
+	flussoId : string;	
+	flusso : string;
+	presidio : string;
+  nosologico : string;	
+	nominativo : string;	
+	reparto : string;	
+	dataRicovero : Date;	
+	dataDimissione : Date;	
+	operazione :string;	
+	trasmissione : string;	
+	protocolloSio : string;	
+	dataInvio : Date;	
+	dataRicezione : Date;	
+	esito : string;
+  status:number
+}
+
+export class MonitorSdoPaginDTO{
+  monitorData : SdoMonitorXl[];
+  totalPages : number;
+  count:number;
+}
+
+export class MonitorSdoXlFilter{
+  pageNo:number;
+  pageSize:number
+  flussoId : string;	
+	flusso : string;
+	presidio : string;	
+	nominativo : string;	
+	reparto : string;	
+  operazione :string;	
+  trasmissione : string;	
+	protocolloSio : string;	
+  esito : string;
+	dataRicoveroFrom : Date;	
+  dataRicoveroTo : Date;
+	dataDimissioneFrom : Date;	
+  dataDimissioneTo : Date;		
+	dataInvioFrom : Date;	
+  dataInvioTo : Date;	
+	dataRicezioneFrom : Date;	
+  dataRicezioneTo : Date;
+  nosologicoFrom : string;
+  nosologicoTo : string;
+  idEstrazione: string;
+  sortField : string;
+  sortDir : string = '';
+	
+}
+
+export class MonitorSdoSearch{
+  pageNo : number;
+  pageSize : number;
+  monitorFilter : MonitorSdoXlFilter;
+}
+
+export class ExtraFilterValueSet {
+  code: string;
+  display: string;
+}
+
+export class ExtraFilter {
+  campo: string;
+  label: string;
+  selected: string;
+}
+
+export class UploadReturnsRequest {
+  id: string;
+  extractionId: string;
+  creationDate: Date;
+  tipoValidazioneReg: string;
+}

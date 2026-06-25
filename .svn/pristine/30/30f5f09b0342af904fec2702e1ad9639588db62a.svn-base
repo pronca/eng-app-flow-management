@@ -1,0 +1,59 @@
+<div class="badge" [class.selected-item]="searchComponent.isItemSelected(item)" [ngClass]="getGlobalItemStyleValues()">
+
+    <div class="bend">
+
+    </div>
+
+    <div class="header" (click)="openChildActivity('Modifica',false)">
+        {{item.name}} {{versionNameValue}}
+    </div>
+
+    <div class="content" (click)="openChildActivity('Modifica',false)">
+
+        <div *ngIf="mainImageValue" class="left-col">
+            <ng-container>
+
+                <!-- <mat-icon class="box-image" svgIcon="{{badgeIcon}}"></mat-icon> -->
+            </ng-container>
+        </div>
+
+        <div class="body">
+            <item-values-renderer renderStyle="COLUMN" [item]="item" [context]="getItemsRendererContext()"
+                [values]="badgeBodyValues">
+            </item-values-renderer>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="action">
+
+            <button matTooltip="Esporta configurazione" mat-button
+            (click)="exportFlusso(item)"><mat-icon>get_app</mat-icon></button>
+
+            <button matTooltip="Duplica Flusso" mat-button
+            (click)="duplica('play', request, item, $event)"><mat-icon>control_point_duplicate</mat-icon></button>
+
+            <button matTooltip="Elimina Flusso" mat-button
+            (click)="eliminaFlusso(item)"><mat-icon>delete_forever</mat-icon></button>
+        </div>
+    </div>
+
+    <div class="footer" *ngIf="hasActions()">
+        <item-actions [item]="item" [actions]="actions">
+        </item-actions>
+    </div>
+</div>
+
+
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+    </div>

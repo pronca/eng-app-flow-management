@@ -1,0 +1,1354 @@
+import {Component, Inject, ViewChild} from '@angular/core';
+
+import {
+    ActivityAction,
+    ActivityActionType,
+    ActivityManager,
+    Choice,
+    EditActivityComponent,
+    SearchActivityComponent,
+    SearchFilters,
+} from 'eng-app';
+
+import { FlowConfigurationService } from "../flow-configuration/flow-configuration.service";
+import {
+    FlowConfigurationFilter,
+    FlowConfigurationFilterField,
+    FlowExport,
+    FlowNative,
+    FlowTableField,
+    JobTalend,
+    MachineState,
+    StateChips,
+    Version
+} from '../flow-configuration/flow-configuration.model';
+import Utils from "../flow-configuration/flow-configuration.utils";
+
+// @ts-ignore
+@Component({
+    selector: 'flow-output-activity',
+    templateUrl: './flow-output-activity.component.html',
+    styleUrls: ['./flow-output-activity.component.scss'],
+})
+
+export class FlowOutputActivityComponent extends EditActivityComponent {
+    isDisableStandardCheck: boolean = true;
+    showLoadingIndicator: boolean = true;
+    type:boolean = true;
+    states: StateChips[] = [
+        { name: 'Corrette', code: 'CORRETTE', selected: false },
+        { name: 'Tutte', code: 'TUTTE', selected: false },
+        { name: 'Già Inviate', code: 'GIA_INVIATE', selected: false },
+        { name: 'Mai Inviate', code: 'MAI_INVIATE', selected: false },
+        { name: 'Corrette Mai Inviate', code: 'MAI_INVIATE,CORRETTE', selected: false }
+        ];
+    array: StateChips["code"][] = [];
+    arrayDynamic: StateChips["code"][] = [];
+
+    choice: Choice = {
+        //icon:'done',
+        text: 'OK',
+        cssClass: '{text-align:center;}'
+    };
+
+    coc: FlowConfigurationFilterField = new FlowConfigurationFilterField();
+
+    choices: Choice[] = [];
+    checkComboDinamicFilters: boolean = true;
+    isStandard: boolean = true;
+    isStandard2: boolean = true;
+    isDisable: boolean = false;
+    isDisableField : boolean = false;
+    isDisableVersion: boolean = true;
+    isDisableDinamic: boolean = true;
+    ckd: boolean = false;
+    flowExport: FlowExport = new FlowExport();
+    flowConfigurationFilterFields: FlowConfigurationFilterField[] = [];
+    flowConfigurationFilterFieldsS: FlowConfigurationFilterField[] = [];
+    flowConfigurationFilterFieldsSt: FlowConfigurationFilterField[] = [];
+    utils = new Utils();
+    mapFlowConfigurationFilters = new Map<string, FlowConfigurationFilter>();
+    flowConfigurationFilter: FlowConfigurationFilter = new FlowConfigurationFilter();
+    //Combo filtri dinamici
+    filters: FlowConfigurationFilter[] = [];
+    filter: FlowConfigurationFilter;
+    flows: FlowNative[];
+    flow: FlowNative;
+    versions: Version[] = [];
+    version: Version = new Version;
+    flow_opt: FlowNative = new FlowNative;
+    version_opt: Version = new Version;
+    selected: FlowConfigurationFilter[] = [];
+    options: string[] = [];
+    editFlow: boolean = false;
+    dateFields: FlowTableField[] = [];
+    jobTalends: JobTalend[] = [];
+    filterId: string = "";
+    version_opt_id : string = "";
+    flow_opt_id : string = "";
+    dinamicHeader: string[] = [];
+    stringHeader: string = "";
+    schedulingType: string = "";
+    schedulingInterval: string = "";
+    schedulingNextTime: Date;
+    schedulingStartingTime: Date;
+    schedulingTypes: any[] = [
+        ["MANUALLY", "MANUALE"],
+        ["ONE_TIME", "UNA VOLTA"],
+        ["PERIODICALLY", "PERIODICA"]
+    ];
+    schedulingIntervals: any[] = [
+        ["DAILY", "GIORNALIERO"],
+        ["WEEKLY", "SETTIMANALE"],
+        ["MONTHLY", "MENSILE"],
+        ["YEARLY", "ANNUALE"]
+    ];
+
+    showDate: boolean = false;
+    showInterval: boolean = false;
+    select: boolean[] = [];
+    datenow: Date = new Date();
+    ckdDrg: boolean = false;
+    showDrg: boolean = false;
+
+
+    constructor(
+        private flowConfigurationService: FlowConfigurationService,
+        private activityManager: ActivityManager,
+        @Inject('SearchActivityComponent') public searchComponent: SearchActivityComponent,
+    ) {
+        super();
+    }
+
+    ngOnInit(): void {
+        this.retrieveFlow();
+        let starterParams: any = this.activity.startingParams;
+        if (starterParams && starterParams.editItem) {
+            //Implementare "servizio" che controlla se ci sono conf. Standard per quel flusso
+            this.isDisableStandardCheck = false;
+            //
+            this.flowExport = starterParams.editItem;
+            //inibisco la modifica se lo stato è diverso da "RICHIESTA"
+            if (this.flowExport.status != MachineState.RICHIESTA) {
+                this.isDisable = true;
+                this.isDisableDinamic = false;
+            }
+            else{
+                this.isDisableVersion = false
+                this.isDisableDinamic = false;
+            }
+            this.editFlow = true;
+            this.flowConfigurationFilter = starterParams.editItem;
+            this.flow = this.flowConfigurationFilter.flow;
+            this.version = this.flowConfigurationFilter.version;
+            this.versions = this.flow.versions;
+            this.flow_opt = this.flow;
+            this.flow_opt_id = this.flow.id;
+            this.version_opt = this.version;
+            this.version_opt_id = this.version.id;
+            this.schedulingType = this.flowExport.schedulingType;
+            this.schedulingInterval = this.flowExport.schedulingInterval;
+            this.schedulingStartingTime = this.flowExport.schedulingStartingTime;
+            this.schedulingNextTime = this.flowExport.schedulingNextTime;
+            if (this.schedulingInterval != null) {
+                this.showInterval = true;
+            }
+            if (this.schedulingStartingTime != null) {
+                this.showDate = true;
+            }
+            this.ckdDrg = this.flowExport.drg;
+            this.checkShowDrg();
+            //carico la combo dei filtri dinamici e recuper le selezioni "se in modifica"
+            this.setComboDinamicFilters(this.flow_opt.id, this.version_opt.id, 0);
+
+            if(this.flowExport && this.flowExport.flowConfigurationFilters) {
+            for (let i = 0; i < this.flowExport.flowConfigurationFilters.length; i++) {
+                if (this.flowExport.flowConfigurationFilters[i].type == 2){
+                    this.type = false;
+                    this.ckd = true;
+                    this.isDisableStandardCheck=true;
+                    this.mapFlowConfigurationFilters = new Map<string, FlowConfigurationFilter>();
+                    this.flowConfigurationFilterFieldsSt = [];
+                    this.flowConfigurationFilterFieldsS = [];
+                    this.flowConfigurationFilterFields = [];
+                    this.filters = [];
+                    //Controllo se JobTalend è stato già caricato
+                    //if(this.jobTalends == null || this.jobTalends.length==0) {
+                    this.retrieveJobTalend(this.flow.code, this.version.id);
+                    //}
+                    //DISABILITA FILTRI DINAMICI
+                    this.getConfigurationFilters(this.flow.id, this.version.id, 2, null);
+                    //this.isDisableDinamic = false;
+                    // this.schedulingType = this.schedulingTypes[0][0];
+                    //this.standar();
+                }
+                if (this.flowExport.flowConfigurationFilters[i].type == 1) {
+                    this.isDisableStandardCheck=true;
+                    for (let j = 0; j < this.flowExport.flowConfigurationFilters[i].fields.length; j++) {
+                        for (let k = 0; k < this.flowExport.flowConfigurationFilters[i].fields[j].length; k++) {
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "ComboBox"
+                                || this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Multi"
+                                || this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Radio") {
+                                //Prestazioni???
+                                this.retriveTabgenFieldValue(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterTable,
+                                    this.flowExport.flowConfigurationFilters[i].fields[j][k].filterField, j, k,
+                                    this.flowExport.flowConfigurationFilters[i]);
+                            }
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Text" ||
+                                this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Radio" ||
+                                this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "ComboBox" ||
+                                this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Campi" ||
+                                this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Chips") {
+                                for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                        if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Chips") {
+                                            for (let m = 0; m < this.flowExport.flowConfigurationFilterFieldValues[h].multiValues.length; m++) {
+                                                for (let l = 0; l < this.states.length; l++) {
+                                                    if (this.states[l].code == this.flowExport.flowConfigurationFilterFieldValues[h].multiValues[m]) {
+                                                        this.states[l].selected = true;
+                                                        this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues = this.flowExport.flowConfigurationFilterFieldValues[h].multiValues;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else{
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].singleValue = this.flowExport.flowConfigurationFilterFieldValues[h].singleValue;
+                                        }
+                                    }
+
+                                   //  for(let q = 0 ; q <this.stati.length ; q++){
+                                   //      if (this.stati[q].code == this.flowExport.flowConfigurationFilterFieldValues[h].singleValue){
+                                   //          this.stati[q].state = true;
+                                   //      }
+                                   //
+                                   //  }
+                                   //
+                                   // }
+                                }
+                            }
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Date") {
+                                for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                    if (!this.flowExport.flowConfigurationFilters[i].fields[j][k].range) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                        }
+                                    } else {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId ==
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue == null) {
+                                                this.flowExport.flowConfigurationFilters[i].fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                            } else {
+                                                this.flowExport.flowConfigurationFilters[i].fields[j][k].dateToValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Numeric") {
+                                for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                    if (!this.flowExport.flowConfigurationFilters[i].fields[j][k].range) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                        }
+                                    } else {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId ==
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].numToValue == null) {
+                                                this.flowExport.flowConfigurationFilters[i].fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                            } else {
+                                                this.flowExport.flowConfigurationFilters[i].fields[j][k].numToValue = this.flowExport.flowConfigurationFilterFieldValues[h].numToValue;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            // if(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Multi") {
+                            //     let l = 0;
+                            //     for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            //         if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                            //             this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues[l] = this.flowExport.flowConfigurationFilterFieldValues[h].multiValues[l];
+                            //         l++;
+                            //         }
+                            //     }
+                            // }
+                            // if(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Multi"){
+                            //         for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            //             if(this.flowExport.flowConfigurationFilterFieldValues[h].filterId==this.flowExport.flowConfigurationFilters[i].fields[j][k].id){
+                            //                 this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues = this.flowExport.flowConfigurationFilterFieldValues[h].multiValues;
+                            //             }
+                            //         }
+                            //     }
+
+                            this.flowConfigurationFilterFieldsS.push(this.flowExport.flowConfigurationFilters[i].fields[j][k]);
+                        }
+                    }
+                }
+                else {
+                    this.isDisableStandardCheck=true;
+                    for (let j = 0; j < this.flowExport.flowConfigurationFilters[i].fields.length; j++) {
+                        for (let k = 0; k < this.flowExport.flowConfigurationFilters[i].fields[j].length; k++) {
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "ComboBox"
+                                || this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Multi"
+                                || this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Radio") {
+                                //Prestazioni????
+                                this.retriveTabgenFieldValue(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterTable,
+                                    this.flowExport.flowConfigurationFilters[i].fields[j][k].filterField, j, k,
+                                    this.flowExport.flowConfigurationFilters[i]);
+                            }
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Text" ||
+                                this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Radio" ||
+                                this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "ComboBox" ||
+                                this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Campi") {
+                                for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                        this.flowExport.flowConfigurationFilters[i].fields[j][k].singleValue = this.flowExport.flowConfigurationFilterFieldValues[h].singleValue;
+                                    }
+                                }
+                            }
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Date") {
+                                for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                    if (!this.flowExport.flowConfigurationFilters[i].fields[j][k].range) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                        }
+                                    } else {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId ==
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue == null) {
+                                                this.flowExport.flowConfigurationFilters[i].fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                            } else {
+                                                this.flowExport.flowConfigurationFilters[i].fields[j][k].dateToValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Numeric") {
+                                for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                    if (!this.flowExport.flowConfigurationFilters[i].fields[j][k].range) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                        }
+                                    } else {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId ==
+                                            this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].numToValue == null) {
+                                                this.flowExport.flowConfigurationFilters[i].fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                            } else {
+                                                this.flowExport.flowConfigurationFilters[i].fields[j][k].numToValue = this.flowExport.flowConfigurationFilterFieldValues[h].numToValue;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            // if(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Multi") {
+                            //     let l = 0;
+                            //     for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            //         if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                            //             this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues[l] = this.flowExport.flowConfigurationFilterFieldValues[h].multiValues[l];
+                            //         l++;
+                            //         }
+                            //     }
+                            // }
+                            // if(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Multi"){
+                            //         for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            //             if(this.flowExport.flowConfigurationFilterFieldValues[h].filterId==this.flowExport.flowConfigurationFilters[i].fields[j][k].id){
+                            //                 this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues = this.flowExport.flowConfigurationFilterFieldValues[h].multiValues;
+                            //             }
+                            //         }
+                            //     }
+                        }
+                    }
+                }
+                this.addFlowConfigurationFilterMap(this.mapFlowConfigurationFilters, this.flowExport.flowConfigurationFilters[i].id);
+            }
+        }
+            this.retrieveJobTalend(this.flow.code, this.version.id);
+        }
+        else{
+            //set default chip
+            for (let i = 0; i < this.flowExport.flowConfigurationFilters.length; i++) {
+                for (let j = 0; j < this.flowExport.flowConfigurationFilters[i].fields.length; j++) {
+                    for (let k = 0; k < this.flowExport.flowConfigurationFilters[i].fields[j].length; k++) {
+                        if(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Chips"){
+                            this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues = this.arrayDynamic;
+                        }
+                    }
+                    }
+                }
+        }
+    }
+
+    /**
+     * objectComparisonFunction (mat-select object)
+     * @param option
+     * @param value
+     */
+    public objectComparisonFunction = function( option, value ) : boolean {
+        return option.id === value.id;
+    }
+
+    /**
+     * Initialize ComboBox Version
+     * @param opt
+     */
+    initVersion(value) {
+        this.schedulingType = undefined;
+        this.showDate = false,
+        this.showInterval = false;
+        this.ckd = false;
+        this.isDisableStandardCheck = true;
+        //Se cambio il flusso resetto i valori della richiesta.
+        this.flowExport.flowConfigurationFilters = [];
+        this.flowExport.flowConfigurationFilterFieldValues = [];
+        // Reset combo
+        this.version_opt = null;
+        this.versions = null;
+        this.checkComboDinamicFilters = true;
+        //
+        this.isDisableDinamic = true;
+        this.isDisableVersion = false;
+        this.stringHeader = "";
+        this.mapFlowConfigurationFilters = new Map<string, FlowConfigurationFilter>();
+        this.flowConfigurationFilterFieldsSt = [];
+        this.flowConfigurationFilterFieldsS = [];
+        this.flowConfigurationFilterFields = [];
+        this.filters = [];
+        this.flow = value;
+        this.versions = value.versions;
+
+        this.checkShowDrg();
+    }
+
+    checkShowDrg(){
+        this.flowConfigurationService.searchTabgenFields("FM_CODICI_REGIONE").then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    for(let i=0; i<response.opTargetObject.items.length; i++){
+                        if(response.opTargetObject.items[i].description == "VALORE"){
+                            var tabgenField = response.opTargetObject.items[i].tabgenValueColumn;
+                        }
+                        if(response.opTargetObject.items[i].description == "CHIAVE"){
+                            var tabgenValue = response.opTargetObject.items[i].tabgenValueColumn;
+                        }
+                    }
+
+                    let filterGlob: SearchFilters = new SearchFilters();
+                    filterGlob.tabgenId = "FM_CODICI_REGIONE";
+                    this.flowConfigurationService.tabgenValueListSearchDataProvider(filterGlob).then(response => {
+                        if (response.success) {
+                            if (response.opTargetObject.error) {
+                                //this.manageError(response.opTargetObject.error);
+                            } else {
+                                for(let i=0; i<response.opTargetObject.items.length; i++){
+                                    if(this.flow.name == response.opTargetObject.items[i][tabgenValue.toLowerCase()]){
+                                        var codiceRegioneFlusso = response.opTargetObject.items[i][tabgenField.toLowerCase()];
+                                    }
+                                }
+                                if(codiceRegioneFlusso == "SDO2"){
+                                    this.showDrg = true;
+                                }else{
+                                    this.showDrg = false;
+                                }
+                            }
+                        }
+                    }).catch(() => {
+                        this.showLoadingIndicator = false;
+                        let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+                        this.activityManager.engApplication.notifyMessage(errorMessage);
+                    });
+                }
+            }
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+    }
+
+
+    /**
+     * Load JobTalend, Combo Filtri Dinamici, getConfiguration Static
+     * @param $event
+     */
+    initDataField(value) {
+        //this.stringHeader = "";
+        this.mapFlowConfigurationFilters = new Map<string, FlowConfigurationFilter>();
+        this.flowConfigurationFilterFieldsSt = [];
+        this.flowConfigurationFilterFieldsS = [];
+        this.flowConfigurationFilterFields = [];
+        this.filters = [];
+        this.version = value;
+        //Controllo se JobTalend è stato già caricato
+        //if(this.jobTalends == null || this.jobTalends.length==0) {
+            this.retrieveJobTalend(this.flow.code, this.version.id);
+        //}
+        //Controllo se combo filtri dinamici
+        if (this.checkComboDinamicFilters) {
+            this.setComboDinamicFilters(this.flow.id, value.id, 0);
+        }
+        //CARICO STANDARD
+        this.getConfigurationFilters(this.flow.id, value.id, 2, null);
+        this.isStandard2 = false;
+        this.isStandard = false
+        this.ckd = true;
+        this.isDisableStandardCheck = false;
+        //CARICO STATICI SE NON CI SONO STANDARD
+        // if(this.mapFlowConfigurationFilters.size==0){
+        //     this.getConfigurationFilters(this.flow.id, value.id, 1, null);
+        //     this.ckd = false;
+        // }
+        //CHIPS DEF
+        for (let stato of this.states) {
+            if(stato.code == "TUTTE"){
+                stato.selected = true;
+                this.arrayDynamic.push(stato.code);
+            }
+        }
+
+        this.isDisableDinamic = false;
+        this.schedulingType = this.schedulingTypes[0][0];
+    }
+
+    /**
+     * getConfigurationStaticFilters
+     * Retrive all Configuration Filters Static ("FLAG TRUE")
+     * @param flow
+     * @param version
+     * @param type
+     */
+    getConfigurationFilters(flow: string, version: string, type: number, configurationId: string) {
+        this.showLoadingIndicator = true;
+        this.flowConfigurationService.getConfigFilter(flow, version, type).then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    if (configurationId == null) {
+                        for (let i = 0; i < response.opTargetObject.items.length; i++) {
+                            this.filterId = response.opTargetObject.items[i].id;
+                            this.mapFlowConfigurationFilters.set(response.opTargetObject.items[i].id, response.opTargetObject.items[i])
+                        }
+                        this.addFlowConfigurationFilterMap(this.mapFlowConfigurationFilters, null);
+                    } else {
+                        for (let i = 0; i < response.opTargetObject.items.length; i++) {
+                            if (response.opTargetObject.items[i].id == configurationId) {
+                                this.filterId = response.opTargetObject.items[i].id;
+                                this.mapFlowConfigurationFilters.set(response.opTargetObject.items[i].id, response.opTargetObject.items[i])
+                            }
+                        }
+                        this.addFlowConfigurationFilterMap(this.mapFlowConfigurationFilters, this.filterId);
+                    }
+
+                }
+                this.showLoadingIndicator = false;
+            }
+        }).catch(() => {
+            this.showLoadingIndicator = false;
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+        return Promise.resolve();
+    }
+
+
+    /**
+     * Initialize Combo Dinamic Filter
+     * @param flow
+     * @param version
+     * @param type (true=static,false=dinamic)
+     */
+    setComboDinamicFilters(flow: string, version: string, type: number) {
+        this.showLoadingIndicator = true;
+        this.checkComboDinamicFilters = false;
+        this.flowConfigurationService.getConfigFilter(flow, version, type).then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    for (let i = 0; i < response.opTargetObject.items.length; i++) {
+                        this.filters.push(response.opTargetObject.items[i]);
+                    }
+                    this.filters.sort((one, two) => (one.name > two.name ? -1 : 1));
+
+                    if (this.flowExport && this.flowExport.flowConfigurationFilters) {
+                        for (let i = 0; i < this.flowExport.flowConfigurationFilters.length; i++) {
+                            if (this.flowExport.flowConfigurationFilters[i].type == 0)
+                                this.selected.push(this.flowExport.flowConfigurationFilters[i]);
+                        }
+                        this.selected.sort((one, two) => (one.name > two.name ? -1 : 1));
+                    }
+                }
+                this.showLoadingIndicator = false;
+            }
+        }).catch(() => {
+            this.showLoadingIndicator = false;
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+        return Promise.resolve();
+    }
+
+    compareFn(user1: FlowConfigurationFilter, user2: FlowConfigurationFilter) {
+        return user1 && user2 ? user1.id === user2.id : user1 === user2;
+    }
+
+    /**
+     * Initialize Dinamic Configuration
+     * @param $event
+     */
+    initFilterDinamic($event) {
+        if ($event.source.selected) {
+            //this.dinamicHeader.push($event.source.value.name);
+            //this.mapFlowConfigurationFilters.set($event.source.value.id, $event.source.value)
+            this.getConfigurationFilters(this.flow_opt.id, this.version_opt.id, 0, $event.source.value.id);
+        } else {
+            this.removeFieldByConfigId($event.source.value.id);
+            this.mapFlowConfigurationFilters.delete($event.source.value.id);
+            // for (let i = 0; i < this.dinamicHeader.length; i++) {
+            //     if ($event.source.value.name == this.dinamicHeader[i]) {
+            //         this.dinamicHeader.splice(i, 1);
+            //     }
+            // }
+        }
+        //this.stringHeader = this.dinamicHeader.join();
+    }
+
+    /**
+     * initActivityActions
+     */
+    initActivityActions() {
+        super.initActivityActions();
+        this.activity.removeActivityAction(EditActivityComponent.SAVE_ACTION);
+
+        this.activity.addActivityAction({
+            actionType: ActivityActionType.MAIN,
+            name: EditActivityComponent.SAVE_ACTION,
+            tooltip: "Salva",
+            icon: "check",
+            fn: (activity, action) => {
+                this.executeSaveAction(null);
+                return Promise.resolve(null);
+            }
+        });
+    }
+
+    /**
+     * RetriveFlow
+     * Retrive Object FlowDTO
+     */
+    retrieveFlow() {
+        this.showLoadingIndicator = true;
+        this.flowConfigurationService.searchFlowExtr().then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    this.flows = response.opTargetObject.items;
+                }
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+            this.showLoadingIndicator = false;
+        }).catch(() => {
+            this.showLoadingIndicator = false;
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+        return Promise.resolve();
+    }
+
+
+    /**
+     * executeSaveAction
+     * @param action
+     */
+    executeSaveAction(action: ActivityAction): Promise<any> {
+        this.showLoadingIndicator = true;
+        for (let i = 0; i < this.flowExport.flowConfigurationFilters.length; i++) {
+            for (let j = 0; j < this.flowExport.flowConfigurationFilters[i].fields.length; j++) {
+                for (let k = 0; k < this.flowExport.flowConfigurationFilters[i].fields[j].length; k++) {
+                    if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Text" ||
+                        this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Radio" ||
+                        this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "ComboBox" ||
+                        this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Campi") {
+                        //||
+                        ///this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Chips") {
+                        for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                this.flowExport.flowConfigurationFilterFieldValues[h].singleValue = this.flowExport.flowConfigurationFilters[i].fields[j][k].singleValue;
+                            }
+                        }
+                    }
+                    if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Numeric") {
+                        for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            if (!this.flowExport.flowConfigurationFilters[i].fields[j][k].range) {
+                                if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                    this.flowExport.flowConfigurationFilterFieldValues[k].numFromValue = this.flowExport.flowConfigurationFilters[i].fields[j][k].numFromValue;
+                                }
+                            }
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].range) {
+                                if (this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue != null) {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                        this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue = this.flowExport.flowConfigurationFilters[i].fields[j][k].numFromValue;
+                                        this.flowExport.flowConfigurationFilterFieldValues[h].numToValue = this.flowExport.flowConfigurationFilters[i].fields[j][k].numToValue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Date") {
+                        for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            if (!this.flowExport.flowConfigurationFilters[i].fields[j][k].range) {
+                                if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                    this.flowExport.flowConfigurationFilterFieldValues[k].dateFromValue = this.flowExport.flowConfigurationFilters[i].fields[j][k].dateFromValue;
+                                }
+                            }
+                            if (this.flowExport.flowConfigurationFilters[i].fields[j][k].range) {
+                                if (this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue != null) {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                        this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue = this.flowExport.flowConfigurationFilters[i].fields[j][k].dateFromValue;
+                                        this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue = this.flowExport.flowConfigurationFilters[i].fields[j][k].dateToValue;
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Multi") {
+                        for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                this.flowExport.flowConfigurationFilterFieldValues[h].multiValues = this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues;
+                            }
+                        }
+                    }
+                    if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Chips") {
+                        for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                this.flowExport.flowConfigurationFilterFieldValues[h].multiValues = this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues;
+                            }
+                        }
+                        if(this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues==null || this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues.length==0){
+                            this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues = this.arrayDynamic;
+                        }
+                    }
+                    // if(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Multi") {
+                    //     let l = 0;
+                    //     for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                    //         if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                    //             this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues[l] = this.flowExport.flowConfigurationFilterFieldValues[0].multiValues[l];
+                    //             l++;
+                    //         }
+                    //     }
+                    // }
+
+                    this.flowConfigurationFilterFieldsS.push(this.flowExport.flowConfigurationFilters[i].fields[j][k]);
+                }
+            }
+        }
+
+        if (this.checkMandatoryHeader()) {
+            this.utils.messageError("!i18n# Errore Salvataggio", "!i18n#Valorizzare i Campi Obbligatori", this.activity);
+            this.showLoadingIndicator = false;
+            return;
+        }
+        this.flowExport.flow = this.flow;
+        this.flowExport.version = this.version;
+        this.flowExport.schedulingType = this.schedulingType;
+        this.flowExport.schedulingInterval = this.schedulingInterval;
+        this.flowExport.schedulingStartingTime = this.schedulingStartingTime;
+        this.flowExport.jobTalendId = this.jobTalends[0]; //?????
+        if (this.schedulingNextTime == null) {
+            this.schedulingNextTime = this.flowExport.schedulingStartingTime;
+        }
+        this.flowExport.schedulingNextTime = this.schedulingNextTime;
+        if (this.flowExport.flowConfigurationFilters.length == 0 || this.flowExport.flowConfigurationFilters == null) {
+            this.mapFlowConfigurationFilters.forEach((conf: FlowConfigurationFilter, key: string) => {
+                this.flowExport.flowConfigurationFilters.push(conf);
+            });
+            //set default chip
+            this.arrayDynamic = [];
+            for (let stat of this.states) {
+                if(stat.selected){this.arrayDynamic.push(stat.code);
+                }
+            }
+            //this.flowExport.flowConfigurationFilters.push(this.coc);
+            for (let i = 0; i < this.flowExport.flowConfigurationFilters.length; i++) {
+                for (let j = 0; j < this.flowExport.flowConfigurationFilters[i].fields.length; j++) {
+                    for (let k = 0; k < this.flowExport.flowConfigurationFilters[i].fields[j].length; k++) {
+                        if(this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "Chips"){
+
+                            this.flowExport.flowConfigurationFilters[i].fields[j][k].multiValues = this.arrayDynamic;
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            this.mapFlowConfigurationFilters.forEach((conf: FlowConfigurationFilter, key: string) => {
+                for (let i = 0; i < this.flowExport.flowConfigurationFilters.length; i++) {
+                    if(conf.id != this.flowExport.flowConfigurationFilters[i].id){
+                        this.flowExport.flowConfigurationFilters.push(conf);
+                    }
+                }
+            });
+            for (let i = 0; i < this.flowExport.flowConfigurationFilters.length; i++) {
+                this.flowExport.flowConfigurationFilters[i].fields = [];
+                if (this.flowExport.flowConfigurationFilters[i].type == 1 || this.flowExport.flowConfigurationFilters[i].type == 2) {
+                    this.flowExport.flowConfigurationFilters[i].fields.push(this.flowConfigurationFilterFieldsS);
+                }
+                else {
+                    this.flowExport.flowConfigurationFilters[i].fields.push(this.flowConfigurationFilterFields);
+                }
+            }
+        }
+        if (this.checkMandatoryField()) {
+            this.showLoadingIndicator = false;
+            this.utils.messageError("!i18n# Errore Salvataggio", "!i18n#Valorizzare il Campi Obbligatori", this.activity);
+            this.flowExport.flowConfigurationFilters.length = 0;
+            return;
+        }
+        this.flowConfigurationService.saveExport(this.flowExport).then(response => {
+            if (response.success) {
+                this.showLoadingIndicator = false;
+                //tk 1240904
+                this.activity.resetDirty();
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    this.flowExport = null;
+                    this.activityManager.goBack();
+                    //this.activityManager.startReplacementActivityByName("flow-output.search");
+                }
+            } else {
+                this.showLoadingIndicator = false;
+                this.flowExport = null;
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+            this.flowExport = null;
+            this.showLoadingIndicator = false;
+        }).catch(() => {
+            this.flowExport = null;
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+        return Promise.resolve();
+        // }
+    }
+
+
+    /**
+     * removeFieldByConfigId
+     * Remove from Lists
+     * @param configirationId
+     */
+    removeFieldByConfigId(configirationId: string) {
+        let temp: FlowConfigurationFilterField[] = [];
+        this.flowConfigurationFilterFields.forEach((item, index) => {
+            if (item.configurationId != configirationId) {
+                temp.push(item);
+            }
+        });
+        this.flowConfigurationFilterFields = temp;
+    }
+
+    /**
+     * addFlowConfigurationFilterMap
+     * add FlowConfigurationFilter -> Map
+     * @param mapFilters
+     */
+    addFlowConfigurationFilterMap(mapFilters: Map<string, FlowConfigurationFilter>, filterId: string) {
+        mapFilters.forEach((conf: FlowConfigurationFilter, key: string) => {
+            if (conf.type==2 && this.flowConfigurationFilterFieldsS.length == 0) {
+                for (let j = 0; j < conf.fields.length; j++) {
+                    for (let k = 0; k < conf.fields[j].length; k++) {
+                        if (conf.fields[j][k].filterType == "ComboBox"
+                            || conf.fields[j][k].filterType == "Multi"
+                            || conf.fields[j][k].filterType == "Radio") {
+                            conf.fields[j][k].tabgenValueFilter = [];
+                            this.retriveTabgenFieldValue(conf.fields[j][k].filterTable, conf.fields[j][k].filterField, j, k, conf);
+                        }
+                        if (conf.fields[j][k].filterType == "Text" ||
+                            conf.fields[j][k].filterType == "Radio" ||
+                            conf.fields[j][k].filterType == "ComboBox" ||
+                            conf.fields[j][k].filterType == "Campi" ||
+                            conf.fields[j][k].filterType == "Chips") {
+                            for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                    conf.fields[j][k].singleValue = this.flowExport.flowConfigurationFilterFieldValues[h].singleValue;
+                                }
+                            }
+                        }
+                        // if(conf.fields[j][k].filterType =="Chips"){
+                        //     if(conf.fields[j][k].singleValue == null || conf.fields[j][k].singleValue == ""){
+                        //         conf.fields[j][k].singleValue = "TUTTE";
+                        //         this.stati[3].state = true;
+                        //     }
+                        // }
+                        if (conf.fields[j][k].filterType == "Date") {
+                            for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                if (!conf.fields[j][k].range) {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                        conf.fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                    }
+                                } else {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue != null) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                        }
+                                    }
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue != null) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].dateToValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (conf.fields[j][k].filterType == "Numeric") {
+                            for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                if (!conf.fields[j][k].range) {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                        conf.fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                    }
+                                } else {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue != null) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                        }
+                                    }
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].numToValue != null) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].numToValue = this.flowExport.flowConfigurationFilterFieldValues[h].numToValue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+
+                        this.flowConfigurationFilterFieldsSt.push(conf.fields[j][k]);
+                    }
+                }
+                this.flowConfigurationFilterFieldsSt.sort(
+                    (a, b) => (a.position > b.position) ? 1 : ((b.position > a.position) ? -1 : 0));
+            }
+                if (conf.type==1 && this.flowConfigurationFilterFieldsS.length == 0) {
+                for (let j = 0; j < conf.fields.length; j++) {
+                    for (let k = 0; k < conf.fields[j].length; k++) {
+                        if (conf.fields[j][k].filterType == "ComboBox"
+                            || conf.fields[j][k].filterType == "Multi"
+                            || conf.fields[j][k].filterType == "Radio") {
+                            conf.fields[j][k].tabgenValueFilter = [];
+                            this.retriveTabgenFieldValue(conf.fields[j][k].filterTable, conf.fields[j][k].filterField, j, k, conf);
+                        }
+                        if (conf.fields[j][k].filterType == "Text" ||
+                            conf.fields[j][k].filterType == "Radio" ||
+                            conf.fields[j][k].filterType == "ComboBox" ||
+                            conf.fields[j][k].filterType == "Campi" ||
+                            conf.fields[j][k].filterType == "Chips") {
+                            for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                    conf.fields[j][k].singleValue = this.flowExport.flowConfigurationFilterFieldValues[h].singleValue;
+                                }
+                            }
+                        }
+                        // if(conf.fields[j][k].filterType =="Chips"){
+                        //     if(conf.fields[j][k].singleValue == null || conf.fields[j][k].singleValue == ""){
+                        //         conf.fields[j][k].singleValue = "TUTTE";
+                        //         this.stati[3].state = true;
+                        //     }
+                        // }
+                        if (conf.fields[j][k].filterType == "Date") {
+                            for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                if (!conf.fields[j][k].range) {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                        conf.fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                    }
+                                } else {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue != null) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                        }
+                                    }
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue != null) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].dateToValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (conf.fields[j][k].filterType == "Numeric") {
+                            for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                if (!conf.fields[j][k].range) {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                        conf.fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                    }
+                                } else {
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue != null) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                        }
+                                    }
+                                    if (this.flowExport.flowConfigurationFilterFieldValues[h].numToValue != null) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].numToValue = this.flowExport.flowConfigurationFilterFieldValues[h].numToValue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+
+                        this.flowConfigurationFilterFieldsS.push(conf.fields[j][k]);
+                    }
+                }
+                this.flowConfigurationFilterFieldsS.sort(
+                    (a, b) => (a.position > b.position) ? 1 : ((b.position > a.position) ? -1 : 0));
+            } else {
+                if (conf.id == filterId) {
+                    for (let j = 0; j < conf.fields.length; j++) {
+                        for (let k = 0; k < conf.fields[j].length; k++) {
+                            if (!conf.type) {
+                                if (conf.fields[j][k].filterType == "ComboBox"
+                                    || conf.fields[j][k].filterType == "Multi"
+                                    || conf.fields[j][k].filterType == "Radio") {
+                                    conf.fields[j][k].tabgenValueFilter = [];
+                                    this.retriveTabgenFieldValue(conf.fields[j][k].filterTable, conf.fields[j][k].filterField, j, k, conf);
+                                }
+                                if (conf.fields[j][k].filterType == "Text" ||
+                                    conf.fields[j][k].filterType == "Radio" ||
+                                    conf.fields[j][k].filterType == "ComboBox" ||
+                                    conf.fields[j][k].filterType == "Campi") {
+                                    for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                        if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                            conf.fields[j][k].singleValue = this.flowExport.flowConfigurationFilterFieldValues[h].singleValue;
+                                        }
+                                    }
+                                }
+                                if (conf.fields[j][k].filterType == "Date") {
+                                    for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                        if (!conf.fields[j][k].range) {
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                                conf.fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                            }
+                                        } else {
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue != null) {
+                                                if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                                    conf.fields[j][k].dateFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateFromValue;
+                                                }
+                                            }
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue != null) {
+                                                if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                                    conf.fields[j][k].dateToValue = this.flowExport.flowConfigurationFilterFieldValues[h].dateToValue;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if (conf.fields[j][k].filterType == "Numeric") {
+                                    for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                                        if (!conf.fields[j][k].range) {
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                                conf.fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                            }
+                                        } else {
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue != null) {
+                                                if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                                    conf.fields[j][k].numFromValue = this.flowExport.flowConfigurationFilterFieldValues[h].numFromValue;
+                                                }
+                                            }
+                                            if (this.flowExport.flowConfigurationFilterFieldValues[h].numToValue != null) {
+                                                if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == conf.fields[j][k].id) {
+                                                    conf.fields[j][k].numToValue = this.flowExport.flowConfigurationFilterFieldValues[h].numToValue;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                this.flowConfigurationFilterFields.push(conf.fields[j][k]);
+                            }
+                        }
+                    }
+                }
+                this.flowConfigurationFilterFields.sort(
+                    (a, b) => (a.position > b.position) ? 1 : ((b.position > a.position) ? -1 : 0));
+            }
+        });
+    }
+
+    retrieveJobTalend(flow: string, version: string) {
+        this.flowConfigurationService.searchTalend(flow, version).then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    this.jobTalends = response.opTargetObject.items;
+                }
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+    }
+
+    retriveTabgenFieldValue(tableId: string, fieldName: string, j: number, k: number, conf: FlowConfigurationFilter) {
+        this.flowConfigurationService.searchTabgenTableValueByColumn(tableId, fieldName).then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    let flag = 1;
+                        response.opTargetObject.forEach(function (value) {
+                            if (isNaN(value)){
+//                             if (!isNumeric(value)){
+//                             if (!isNumber(value)){
+                                flag = 0;
+                            }
+                        });
+                        if(flag==1){
+                            conf.fields[j][k].tabgenValueFilter = response.opTargetObject.sort((n1,n2) => n1 - n2);
+                        }
+                        else{
+                            conf.fields[j][k].tabgenValueFilter = response.opTargetObject;
+                        }
+                }
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+    }
+
+    toggleDate($event) {
+        if($event.isUserInput){
+            if ($event.source.value == "ONE_TIME" || $event.source.value == "PERIODICALLY") {
+                this.showDate = true;
+            } else {
+                this.showDate = false;
+            }
+            if ($event.source.value == "PERIODICALLY") {
+                this.showInterval = true;
+            } else {
+                this.showInterval = false;
+            }
+        }
+    }
+
+    changeDate($event) {
+        this.schedulingStartingTime = $event;
+    }
+
+
+    checkMandatoryField(): Boolean {
+        //Configurazione
+        for (let config of this.flowExport.flowConfigurationFilters) {
+            //Filtri [][]
+            for (let fields of config.fields) {
+                //Filtri []
+                for (let field of fields) {
+                    if (field.mandatory) {
+                        if (field.filterType == "Date") {
+                            //Range Controll
+                            if (field.range) {
+                                if (field.dateFromValue == null ||
+                                    field.dateToValue == null) {
+                                    return true;
+                                }
+                            } else {
+                                //NO Range Controll
+                                if (field.dateFromValue == null) {
+                                    return true;
+                                }
+                            }
+                        }
+                        if (field.filterType == "Numeric") {
+                            //Range Controll
+                            if (field.range) {
+                                if (field.numFromValue == null ||
+                                    field.numToValue == null) {
+                                    return true;
+                                }
+                            } else {
+                                //NO Range Controll
+                                if (field.numFromValue == null) {
+                                    return true;
+                                }
+                            }
+                        }
+                        if( field.filterType == "Multi"){
+                            if (field.multiValues == null){
+                                return true;
+                            }
+                        }
+                        if( field.filterType == "Chips"){
+                            //nuova gestione multivalues
+                            if (field.multiValues == null || field.multiValues.length==0){
+                                return true;
+                            }
+                        }
+                        if (field.filterType == "Text" ||
+                            field.filterType == "Radio" ||
+                            field.filterType == "ComboBox" ||
+                            field.filterType == "Campi" 
+                           ) {
+                            if (field.singleValue == null) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    checkMandatoryHeader(): Boolean {
+        //Header Controll
+        if (this.flow_opt == null || this.version_opt == null ||
+            this.schedulingType == "" || this.schedulingType == null) {
+            return true;
+        }
+        return false;
+    }
+
+    changeSelected($event, fruit): void {
+        fruit.selected = $event.selected;
+        //this.chipList.selected;
+    }
+    // checkSelected(coc: FlowConfigurationFilterField, $event,i){
+    //     debugger;
+    //     coc.multiValues.push($event.value);
+    //     coc.name = "Chips"
+    //     coc.filterType = "Chips"
+    //
+    //     for(let stato of this.stati){
+    //         stato.state = false;
+    //     }
+    //
+    //     this.stati[i].state = !this.stati[i].state;
+    //
+    // }
+
+    isEditModeEdit(){
+        return false;
+    }
+
+    onSelectState(coc: FlowConfigurationFilterField, stato,i){
+        stato.selected=!stato.selected;
+        this.arrayDynamic = [];
+
+        for (let stat of this.states) {
+            if(stato.code == stat.code && stat.selected){
+                this.arrayDynamic = [];
+                this.arrayDynamic.push(stat.code);
+            }else{
+                stat.selected = false;
+            }
+        }
+
+        coc.multiValues = this.arrayDynamic;
+        coc.name = "Chips"
+        coc.filterType = "Chips"
+    }
+
+    drg($event){
+        if($event.checked == true){
+            this.flowExport.drg = true;
+        }else{
+            this.flowExport.drg = false;
+        }
+    }
+
+    standar($event){
+        this.isStandard = false;
+        if ($event.checked == true) {
+            this.mapFlowConfigurationFilters = new Map<string, FlowConfigurationFilter>();
+            this.flowConfigurationFilterFieldsSt = [];
+            this.flowConfigurationFilterFieldsS = [];
+            this.flowConfigurationFilterFields = [];
+            this.filters = [];
+            //Controllo se JobTalend è stato già caricato
+            //if(this.jobTalends == null || this.jobTalends.length==0) {
+            this.retrieveJobTalend(this.flow.code, this.version.id);
+            //}
+            //DISABILITA FILTRI DINAMICI
+            this.getConfigurationFilters(this.flow.id, this.version.id, 2, null);
+            //this.isDisableDinamic = false;
+            // this.schedulingType = this.schedulingTypes[0][0];
+            this.flowConfigurationFilterFieldsS.sort(
+                (a, b) => (a.position > b.position) ? 1 : ((b.position > a.position) ? -1 : 0));
+
+            this.flowConfigurationFilterFields.sort(
+                (a, b) => (a.position > b.position) ? 1 : ((b.position > a.position) ? -1 : 0));
+
+        }
+        else{
+            this.isStandard = true;
+            //this.stringHeader = "";
+            this.mapFlowConfigurationFilters = new Map<string, FlowConfigurationFilter>();
+            this.flowConfigurationFilterFieldsSt = [];
+            this.flowConfigurationFilterFieldsS = [];
+            this.flowConfigurationFilterFields = [];
+            this.filters = [];
+            this.version = this.version;
+            //Controllo se JobTalend è stato già caricato
+            //if(this.jobTalends == null || this.jobTalends.length==0) {
+            this.retrieveJobTalend(this.flow.code, this.version.id);
+            //}
+            //Controllo se combo filtri dinamici
+            if (this.checkComboDinamicFilters) {
+                this.setComboDinamicFilters(this.flow.id, this.version.id, 0);
+            }
+            this.getConfigurationFilters(this.flow.id, this.version.id, 1, null);
+            this.isDisableDinamic = false;
+            // this.schedulingType = this.schedulingTypes[0][0];
+            this.setComboDinamicFilters(this.flow_opt.id, this.version_opt.id, 0);
+            //this.ngOnInit();
+        }
+        this.flowConfigurationFilterFieldsS.sort(
+            (a, b) => (a.position > b.position) ? 1 : ((b.position > a.position) ? -1 : 0));
+
+        this.flowConfigurationFilterFields.sort(
+            (a, b) => (a.position > b.position) ? 1 : ((b.position > a.position) ? -1 : 0));
+    }
+
+    itemTrackBy(index: number, item) {
+            return item ? item.filterType : "ComboBox";
+    }
+
+    //tk 1240901
+    onOptionsSelected(co, event) {
+        let value : string = event;
+        let nomeCampo : string = co.name;
+
+        for (let i = 0; i < this.flowExport.flowConfigurationFilters.length; i++) {
+            for (let j = 0; j < this.flowExport.flowConfigurationFilters[i].fields.length; j++) {
+                for (let k = 0; k < this.flowExport.flowConfigurationFilters[i].fields[j].length; k++) {
+                    if (this.flowExport.flowConfigurationFilters[i].fields[j][k].filterType == "ComboBox" && this.flowExport.flowConfigurationFilters[i].fields[j][k].name==nomeCampo) {
+                        for (let h = 0; h < this.flowExport.flowConfigurationFilterFieldValues.length; h++) {
+                            if (this.flowExport.flowConfigurationFilterFieldValues[h].filterId == this.flowExport.flowConfigurationFilters[i].fields[j][k].id) {
+                                this.flowExport.flowConfigurationFilters[i].fields[j][k].singleValue = value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+     }
+
+}
+

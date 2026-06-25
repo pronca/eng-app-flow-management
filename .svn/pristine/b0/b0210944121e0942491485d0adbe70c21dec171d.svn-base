@@ -1,0 +1,494 @@
+import { FmFlow, Header } from './../flow-configuration/flow-configuration.model';
+import { Component, ViewChild } from '@angular/core';
+import { MatSort, MatTableDataSource } from '@angular/material';
+import {ActivityManager, EditActivityComponent} from 'eng-app';
+import {MonitorSdoPaginDTO, MonitorSdoSearch, MonitorSdoXlFilter, SdoMonitorXl } from '../flow-configuration/flow-configuration.model';
+import { FlowConfigurationService } from '../flow-configuration/flow-configuration.service';
+import {animate, state, style, transition, trigger} from '@angular/animations';
+import * as moment_ from 'moment';
+
+
+let pageCount = 0;
+let pageCountError = 0;
+const moment = moment_;
+
+@Component({
+    selector: 'monitor-sdo-xl',
+    templateUrl: './monitor-sdo-xl.component.html',
+    styleUrls: ['./monitor-sdo-xl.component.scss'],
+    animations: [
+      trigger('detailExpand', [
+        state('collapsed', style({height: '0px', minHeight: '0'})),
+        state('expanded', style({height: '*'})),
+        transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
+      ]),
+    ],
+  })
+  export class SdoFlowMonitorComponent extends EditActivityComponent{
+    sdoMonitorXl : SdoMonitorXl;
+    sdoMonitorXlArray : SdoMonitorXl[] = [];
+    monitorSdoPaginDTO : MonitorSdoPaginDTO;
+    displayedColumns: string[] = ['presidio','nosologico','nominativo','reparto','dataRicovero','dataDimissione','operazione','trasmissione','protocolloSio','dataInvio','dataRicezione','esito','download'];
+    displayedFilter: string[] = ['Presidio','Nosologico','Nominativo','Reparto','Data Ricovero','Data Dimissione','Operazione','Trasmissione','Protocollo Sio','Data Invio','Data Ricezione','Esito'];
+    selectedFlusso : string = '';
+    dataSource: MatTableDataSource<SdoMonitorXl>;
+    endPage:number;
+    endPageError:number;
+    maxItemPerPage:number = 5;
+    maxItemPerPageError:number = 5;
+    firstResultDisplay:number;
+    firstResultDisplayError : number;
+    showLoadingIndicator : boolean = false;
+    selectedText:string;
+    selectedOption: string ='Id Flusso';
+    filterValue: string = '';
+    schedulingStartingTime:Date;
+    schedulingEndingTime:Date;
+    displayValueDatePicker:any;
+    isFilterActive: boolean = false;
+    fromNum:string = '';
+    toNum:string = '';
+    sortField: string = '';
+    sortDir: string = 'ASC';
+    expandedElement: any = null;
+    displayedColumnsErrors: any[] = [];
+    totalCount:number;
+    errorResult: string[] = [];
+    flussoColumns:string [] = [];
+    dataSourceErrors: MatTableDataSource<object>;
+    totalCountError:number;
+    isTotalClicked = false;
+    header: Header = new Header();
+    monitorSdoXlFilter:MonitorSdoXlFilter;
+    validationStatus: string = "";
+    filter = {
+      pageNo : pageCount,
+      pageSize: this.maxItemPerPage,
+      selectedOption : this.selectedOption,
+      filterValue : this.filterValue
+    }
+    @ViewChild(MatSort, {static: true} ) sort: MatSort;
+    
+
+    constructor( 
+      private flowConfigurationService: FlowConfigurationService,
+      private activityManager: ActivityManager){ 
+      super()    
+    };
+
+
+    ngOnInit():void{   
+      this.getAllFlusso();
+      this.dataSource = new MatTableDataSource();  
+      this.getAllSdoMonitorData(pageCount,this.maxItemPerPage);
+      this.firstResultDisplay = pageCount + 1;
+      this.dataSource = new MatTableDataSource<SdoMonitorXl>();
+      this.monitorSdoXlFilter = new MonitorSdoXlFilter(); 
+    }
+
+    
+    
+
+    initActivityActions() {
+      this.activity.removeActivityAction(EditActivityComponent.SAVE_ACTION);
+    }
+
+    changeRicoveroStartDate($event) {
+      this.monitorSdoXlFilter.dataRicoveroFrom = $event;
+      console.log("StartDate:: "+this.schedulingStartingTime)
+    }
+    changeRicoveroEndingDate($event) {
+      this.monitorSdoXlFilter.dataRicoveroTo = $event;
+      console.log("EndDate:: "+this.schedulingEndingTime)
+    }
+    changeDimissioneStartingDate($event){
+      this.monitorSdoXlFilter.dataDimissioneFrom = $event;
+    }
+    changeDimissioneEndingDate($event){
+      this.monitorSdoXlFilter.dataDimissioneTo = $event;
+    }
+    changeInvioStartingDate($event){
+      this.monitorSdoXlFilter.dataInvioFrom = $event;
+    }
+    changeInvioEndingDate($event){
+      this.monitorSdoXlFilter.dataInvioTo = $event;
+    }
+    changeRicezioneStartingDate($event){
+      this.monitorSdoXlFilter.dataRicezioneFrom = $event;
+    }
+    changeRicezioneEndingDate($event){
+      this.monitorSdoXlFilter.dataRicezioneTo = $event;
+    }
+
+    getAllSdoMonitorData(pageNo:number,maxItemPerPage:number){
+      this.isFilterActive = false;
+      this.showLoadingIndicator = true;
+      this.flowConfigurationService.getSdoMonitorDataPaginated(pageNo,maxItemPerPage,this.sortField, this.sortDir)
+      .then(response => {
+         if(response.success){
+          this.sdoMonitorXlArray = response.opTargetObject.data;
+          this.endPage = response.opTargetObject.totalPages;
+          this.totalCount = response.opTargetObject.count;
+          this.dataSource.data = this.sdoMonitorXlArray;
+          console.log("Datasource:: "+this.dataSource.data);
+          this.showLoadingIndicator = false;
+         }else {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+          this.isFilterActive = false;
+        } 
+        this.showLoadingIndicator = false;
+      });
+    }
+
+    getAllSdoMonitorDataErrors(filter){
+      this.isFilterActive = false;
+      this.showLoadingIndicator = true;
+      this.dataSourceErrors = new MatTableDataSource<object>(); 
+      this.flowConfigurationService.filterMonitorSdoDataErrors(filter)
+      .then(response => {
+         if(response.success){
+          this.errorResult = response.opTargetObject.data; 
+          let errResArr : string[] = this.errorResult.slice();                  
+          this.dataSourceErrors.data =  this.generateDatasource(errResArr);      
+          this.endPageError = response.opTargetObject.totalPages;
+          if(this.endPageError === 0)
+          this.firstResultDisplayError = 0;  
+          
+          this.totalCountError = response.opTargetObject.count;
+           this.showLoadingIndicator = false;
+         }else {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+          this.isFilterActive = false;
+          this.showLoadingIndicator = false;
+          this.dataSourceErrors.data = [];
+        } 
+        
+      }).catch(e => {
+        this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento delle colonne');
+        this.showLoadingIndicator = false;
+      });
+    }
+    
+    searchMonitorData(){
+        this.isFilterActive = true;
+        pageCount = 0;
+        this.firstResultDisplay = pageCount + 1;
+        this.monitorSdoXlFilter.pageNo = pageCount,
+        this.monitorSdoXlFilter.pageSize=this.maxItemPerPage,
+        this.monitorSdoXlFilter.flusso = this.selectedFlusso;     
+        this.getFilteredMonitorSdoData(this.monitorSdoXlFilter);
+    }
+
+    sortMonitorSdoData(event){
+      if(!this.isFilterActive){
+        this.sortField = event.active;
+        this.sortDir = event.direction;
+        this.getAllSdoMonitorData(pageCount,this.maxItemPerPage);
+      }else{
+  
+        this.monitorSdoXlFilter.sortField = event.active;
+        this.monitorSdoXlFilter.sortDir = event.direction;
+        console.log("SortF:: "+this.monitorSdoXlFilter.sortField+" SortDir:: "+this.monitorSdoXlFilter.sortDir);
+        this.getFilteredMonitorSdoData(this.monitorSdoXlFilter);
+      }
+    }
+
+    getAllFlusso(){
+      let filter={};     
+      this.flowConfigurationService.getFlusso(filter).then(response => {
+        if(response.success){          
+          let columns : FmFlow[] = response.opTargetObject.items;
+          console.log('flownameL::'+columns[0].name)
+          this.flussoColumns = columns.map((arrayItem)=>{
+            return arrayItem.code;
+          })           
+         }else {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+        } 
+      });
+    }
+
+    getFilteredMonitorSdoData(filter){
+      this.showLoadingIndicator = true;
+      this.flowConfigurationService.filterMonitorSdoData(filter).then(response => {
+        if(response.success){
+          this.isFilterActive = true;
+          this.sdoMonitorXlArray = response.opTargetObject.data;
+          this.endPage = response.opTargetObject.totalPages;
+          this.dataSource.data = this.sdoMonitorXlArray;
+          this.showLoadingIndicator = false;
+          this.totalCount = response.opTargetObject.count;
+         }else {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+        } 
+        this.showLoadingIndicator = false;
+      });
+    }
+
+    goToFirstPage() : void {
+      if(pageCount){
+        pageCount = 0;
+        if(this.isFilterActive){        
+          this.monitorSdoXlFilter.pageNo = pageCount;
+          this.monitorSdoXlFilter.pageSize = this.maxItemPerPage;
+        
+          this.getFilteredMonitorSdoData(this.monitorSdoXlFilter);
+          console.log("firstPage::  "+this.monitorSdoXlFilter.pageNo+" pageCount "+pageCount);
+        }else{
+          this.getAllSdoMonitorData(pageCount,this.maxItemPerPage);
+        }
+        
+        this.firstResultDisplay = pageCount+1;
+      }
+    }
+
+    goToFirstPageError(flusso,nosologico) : void {
+      if(pageCountError){
+        pageCountError = 0;
+        let searchFilter = {
+            flusso : flusso,
+            nosologico : nosologico, 
+            pageNo : pageCountError,
+            pageSize: this.maxItemPerPageError,
+        }       
+          this.getAllSdoMonitorDataErrors(searchFilter);
+          console.log("firstPageError::  "+searchFilter.pageNo+" pageCount "+pageCountError);  
+        this.firstResultDisplayError = pageCountError+1;
+      }
+    }
+
+    getServerDataLeft() : void {
+      if(pageCount){
+        if(this.isFilterActive){
+          this.monitorSdoXlFilter.pageNo = --pageCount;
+          this.monitorSdoXlFilter.pageSize = this.maxItemPerPage;
+          this.getFilteredMonitorSdoData(this.monitorSdoXlFilter);
+          console.log("leftPage::  "+this.monitorSdoXlFilter.pageNo+" pageCount "+pageCount);
+        }else{
+          this.getAllSdoMonitorData(--pageCount,this.maxItemPerPage);
+        }
+        --this.firstResultDisplay 
+      }
+    }
+
+    getServerDataLeftError(flusso,nosologico){
+      if(pageCountError){
+       
+        let searchFilter = {
+            flusso : flusso,
+            nosologico : nosologico, 
+            pageNo : --pageCountError,
+            pageSize: this.maxItemPerPageError,
+        }       
+          this.getAllSdoMonitorDataErrors(searchFilter);
+          console.log("firstPageError::  "+searchFilter.pageNo+" pageCount "+pageCountError);  
+        
+      }
+      --this.firstResultDisplayError;
+    }
+    getServerDataRight() :void {
+      if(this.firstResultDisplay <= this.endPage-1){
+        if(this.isFilterActive){
+          this.monitorSdoXlFilter.pageNo = ++pageCount;
+          this.monitorSdoXlFilter.pageSize = this.maxItemPerPage;
+          this.getFilteredMonitorSdoData(this.monitorSdoXlFilter);
+          console.log("rightPage::  "+this.monitorSdoXlFilter.pageNo+" pageCount "+pageCount);
+        }else{
+          this.getAllSdoMonitorData(++pageCount,this.maxItemPerPage);
+        }
+        ++this.firstResultDisplay; 
+      }
+    }
+    getServerDataRightError(flusso,nosologico){
+      if(this.firstResultDisplayError <= this.endPageError-1){
+        pageCountError = 0;
+        let searchFilter = {
+            flusso : flusso,
+            nosologico : nosologico, 
+            pageNo : ++pageCountError,
+            pageSize: this.maxItemPerPageError,
+        }       
+          this.getAllSdoMonitorDataErrors(searchFilter);
+          console.log("firstPageError::  "+searchFilter.pageNo+" pageCount "+pageCountError);  
+        ++this.firstResultDisplayError;
+      }
+    }
+    goToLastPage() : void {
+      if(this.firstResultDisplay < this.endPage){
+        if(this.isFilterActive){
+          this.monitorSdoXlFilter.pageNo = this.endPage-1;
+          this.monitorSdoXlFilter.pageSize = this.maxItemPerPage;
+          this.firstResultDisplay = this.endPage;//dodato
+          pageCount=this.endPage-1;
+          this.getFilteredMonitorSdoData(this.monitorSdoXlFilter);
+          console.log("lastPage::  "+this.monitorSdoXlFilter.pageNo+" pageCount "+pageCount);
+        }else{
+          this.getAllSdoMonitorData(this.endPage-1,this.maxItemPerPage);
+        }     
+        this.firstResultDisplay = this.endPage;
+        pageCount=this.endPage-1;
+      }
+    }
+
+    goToLastPageError(flusso,nosologico){
+      if(this.firstResultDisplayError < this.endPageError){
+        let searchFilter = {
+            flusso : flusso,
+            nosologico : nosologico, 
+            pageNo : this.endPageError-1,
+            pageSize: this.maxItemPerPageError,
+        }       
+          this.getAllSdoMonitorDataErrors(searchFilter);
+          console.log("firstPageError::  "+searchFilter.pageNo+" pageCount "+pageCountError);  
+          this.firstResultDisplayError = this.endPageError;
+          pageCountError=this.endPageError-1;
+      }
+    }
+
+    viewFlowPraticaError(flusso,nosologico) {
+      this.firstResultDisplayError = pageCountError + 1;
+      this.displayedColumnsErrors= this.generaColonneErrors();
+      let filter = {
+        flusso : flusso,
+        nosologico : nosologico, 
+        pageNo : pageCountError,
+        pageSize : this.maxItemPerPageError        
+      };  
+        this.getAllSdoMonitorDataErrors(filter);
+    }
+ 
+    generaColonneErrors(): string[] {
+      let colonne: string[] = [];
+      colonne.push("CODICE", "DESCRIZIONE","VALORE ERRATO","CAMPO","DATA DI VALIDAZIONE","GRAVITA");
+      return (colonne);
+    }
+
+    generateDatasource(errorResult:any):Array<any>{
+      let data = new Array();  
+          for(let i = 0;i<errorResult.length;i++ ){
+            let errorData:object = errorResult[i];
+            data[i] = {};
+            let j = 0;
+            for(let item in errorData){  
+              if(this.isDate(errorData[item])){
+                console.log("Date:: "+ item);
+                errorData[item] = this.dateHConvert(errorData[item]);
+              }     
+              let columnName = this.displayedColumnsErrors[j];
+              data[i][columnName] = errorData[item];
+              j++;
+            }
+          }         
+      return data;
+    }
+
+    generateFlusso(flussoResponse:FmFlow[]):Array<string>{
+      let data = new Array();
+      flussoResponse.forEach((arrayItem)=>{
+          data.push(arrayItem.code);
+      });              
+      return data;
+    }
+            
+    isDate(value) {
+      return value instanceof Date;
+    }
+
+    dateHConvert(data): string {
+      if (data != null) {
+          let myMoment = moment(data);
+          return myMoment.format('D/MM/YYYY HH:mm:ss');
+      } else
+          return "";
+    }
+    //To do
+    downloadXML(idFlusso:string,presidio:string,nosologico:string) {
+     let filter = {
+        flussoId : idFlusso,
+        presidio : presidio,
+        nosologico : nosologico
+      }
+      this.header.label = "Download XML in corso...";
+      this.activityManager.getCurrentPage().setPageMainObject(this.header);
+      this.flowConfigurationService.exportMonitorXMLFile(filter).then(result => {
+          if (result.size > 0) {
+              this.header.visible = false;
+              this.header.label = "";
+              this.activityManager.getCurrentPage().setPageMainObject(this.header);
+              var file = new Blob([result], {type: 'application/zip'});
+              var fileURL = URL.createObjectURL(file);
+              var anchor = document.createElement("a");
+              anchor.download = nosologico;
+              anchor.href = fileURL;
+              anchor.click();
+          } else {
+              this.activityManager.engApplication.notifyMessage('Nessun File trovato');
+              this.header.visible = false;
+              this.header.label = "";
+              this.activityManager.getCurrentPage().setPageMainObject(this.header);
+          }
+      }).catch(() => {
+          this.header.visible = false;
+          this.header.label = "";
+          this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+   
+      });
+
+
+  }
+
+
+    clearFilter(){
+      this.formGroup.reset();
+      this.monitorSdoXlFilter.flussoId = null;
+      console.log("SelFlusso:: "+this.selectedFlusso)
+      this.selectedFlusso = '';
+      //this.selectedFlusso = null;
+      //this.monitorSdoXlFilter.flusso = null;
+      this.monitorSdoXlFilter.presidio = null;
+      this.monitorSdoXlFilter.nosologicoFrom = null;
+      this.monitorSdoXlFilter.nosologicoTo = null;
+      this.monitorSdoXlFilter.nominativo = null;
+      this.monitorSdoXlFilter.reparto = null;
+      this.monitorSdoXlFilter.operazione = null;
+      this.monitorSdoXlFilter.protocolloSio = null;
+      this.monitorSdoXlFilter.esito = null;
+      this.monitorSdoXlFilter.trasmissione = null;
+      this.isFilterActive = false;
+      this.getAllSdoMonitorData(pageCount,this.maxItemPerPage);
+    }
+
+    showTotalData(){
+      this.isTotalClicked = true;
+    }
+
+    statusIcon(elementStatus: string) {
+      if (elementStatus == "ANNULLATA") {
+          return "highlight_off"
+      }
+
+      if (elementStatus == "IN_CORSO") {
+          return "autorenew"
+      }
+
+      if (elementStatus == "TERMINATA_KO") {
+          return "error"
+      }
+      if (elementStatus == "TERMINATA_OK") {
+          return "check_circle"
+      }
+
+      if (elementStatus == "RICHIESTA") {
+          return "send"
+      }
+  }
+
+  
+  }

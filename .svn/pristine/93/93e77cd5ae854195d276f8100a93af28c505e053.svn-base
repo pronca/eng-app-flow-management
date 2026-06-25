@@ -1,0 +1,699 @@
+import {Component, EventEmitter, HostBinding, HostListener, Inject, Output} from '@angular/core';
+
+import {
+    ActivityAction,
+    ActivityActionType,
+    ActivityManager,
+    EditActivityComponent,
+    Promises,
+    SearchActivityComponent,
+    Choice,
+    SearchFilters,
+} from 'eng-app';
+
+import {FlowConfigurationService} from "../flow-configuration.service";
+import {FlowNative, FlowTableField, FmFlow, JobTalend, Version, xsdTalend} from "../flow-configuration.model";
+
+@Component({
+    selector: 'jobTalend-activity',
+    templateUrl: './jobTalend-activity.component.html',
+    styleUrls: ['./jobTalend-activity.component.scss']
+})
+
+export class JobTalendActivityComponent extends EditActivityComponent {
+
+    choice: Choice = {
+      text: 'OK',
+      cssClass: '{text-align:center;}'
+    };
+    isDisableVersion: boolean = true;
+    choices: Choice[] = [];
+    flows: FlowNative[];
+    flow: FlowNative;
+    file: any = [];
+    versions: Version[] = [];
+    version: Version = new Version();
+    showLoadingIndicator:boolean = true;
+    talendJob: JobTalend = new JobTalend();
+    files: any = [];
+    editFlow: boolean = false;
+    opt_id: string;
+    version_id:string;
+    dateFields: FlowTableField[] = [];
+    modAllowed: boolean = false;
+    stati = [
+      {name: 'Corrette'},
+      {name: 'Mai Inviate'},
+      {name: 'Già Inviate'},
+      {name: 'Tutte'}
+    ];
+    dipendences:any = [];
+    fileAnnullamento:any = null;
+    dip: any = [];
+    xsdList: xsdTalend[] = [];
+    xsd: any = [];
+    dipModif: boolean = false;
+    annullamentoModif: boolean = false;
+    xsdModif: boolean = false;
+    comboXSD: any[] = [];
+    xsdChoice: any = [];
+
+    @Output() onFileDropped = new EventEmitter<any>();
+	
+    @HostBinding('style.background-color') background;
+    @HostBinding('style.opacity') opacity = '1';
+
+    constructor(
+        private flowConfigurationService: FlowConfigurationService,
+        private activityManager: ActivityManager,
+        @Inject('SearchActivityComponent') public searchComponent: SearchActivityComponent,
+    ){
+        super();
+    }
+
+
+    ngOnInit() {
+
+      let starterParams: any = this.activity.startingParams;
+
+        if (starterParams && starterParams.editItem) {
+          this.modAllowed = true;
+          this.talendJob = starterParams.editItem;
+          this.searchDipendency(this.talendJob);
+          //search xsd
+          this.editFlow = true;
+
+          this.flow = this.talendJob.flow;
+          this.version = this.talendJob.version;
+          this.versions = this.flow.versions;
+
+          this.opt_id = this.flow.id;
+          this.version_id = this.version.id
+
+
+        }
+
+        this.talendJob.forceUpdate = false;
+        this.retrieveFlow();
+        this.setComboXSD();
+
+    }
+
+    initActivityActions() {
+      super.initActivityActions();
+      this.activity.removeActivityAction(EditActivityComponent.SAVE_ACTION);
+
+      this.activity.addActivityAction({
+        actionType: ActivityActionType.MAIN,
+        name: EditActivityComponent.SAVE_ACTION,
+        tooltip: "Salva",
+        icon: "check",
+        fn: (activity, action) => {
+            this.executeSaveAction(null);
+            return Promise.resolve(null);
+        }});
+
+    }
+
+    retrieveFlow() {
+      this.showLoadingIndicator = true;
+      this.flowConfigurationService.searchFlowExtr().then(response => {
+        if (response.success) {
+          if (response.opTargetObject.error) {
+            //this.manageError(response.opTargetObject.error);
+          } else {
+            this.flows = response.opTargetObject.items;
+
+          }
+        }
+        else {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+        }
+        this.showLoadingIndicator = false;
+      }).catch(() => {
+        this.showLoadingIndicator = false;
+        let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+        this.activityManager.engApplication.notifyMessage(errorMessage);
+      });
+  
+      return Promise.resolve();
+    }
+
+    change(change, property) {
+      this.talendJob[property] = change;
+    }
+
+    convert(): boolean{
+        if(this.flow && 
+          this.version && 
+          this.talendJob.className && 
+          this.talendJob.description &&
+          this.talendJob.type && 
+          this.talendJob.name && 
+          this.talendJob.packageJob) {
+
+          if((!this.file || this.file.length == 0) && !this.talendJob.id) {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore: selezionare il jar da caricare');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+            return false;
+          }
+                    
+          this.talendJob.version = this.version;
+          this.talendJob.flow = this.flow;
+          return true;
+        } else {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore: valorizzare campi obbligatori');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+          return false;
+        }
+      }
+
+    executeSaveAction(action: ActivityAction): Promise<any> {
+        let opContext = this.startOperation();
+        this.beforeSave(opContext);
+        let check: boolean = this.convert();
+        if(check){
+          this.showLoadingIndicator = true;
+          return this.flowConfigurationService.saveTalendJob(this.talendJob).then(response => {
+            if (response.success) {
+              this.talendJob = response.opTargetObject;
+              //for(let i = 0; i< this.files.length; i++){
+                if(!!this.file && this.file.length > 0) {
+                  this.saveTalend(this.talendJob, this.file[0]);
+                }else{
+                  this.saveDependencies();
+
+                  if(!!this.xsd && this.xsdList.length >0 && this.xsdModif) {
+                    for(let i=0; i<this.xsdList.length; i++){
+                      this.saveXsd(this.xsdList[i].xsd,this.flow.name ,this.xsdList[i].sez);
+                    }
+                  }
+                }
+              //}
+              this.activityManager.goBack();
+            }
+            else {
+              this.forceUpdate();
+            }
+            this.showLoadingIndicator = false;
+        }).catch((e) => {
+            this.showLoadingIndicator = false;
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        }).finally(() => {
+          this._zone.run(() => {
+            this.showLoadingIndicator = false;
+            this.finalizeOperation(opContext);
+            
+          });
+        });
+      } else {
+        this._zone.run(() => {
+          this.showLoadingIndicator = false;
+          this.finalizeOperation(opContext);          
+        });
+      }
+    }
+
+    forceUpdate(): Promise<any> {
+      var _this = this;
+              var i18n = this.activity.getI18nService();
+              return this.activity.getUserConfirmService().askConfirmMessage
+              (i18n.instant('!i18n# TalendJob già esistente per questo flusso/versione'), i18n.instant('!i18n# Confermi di voler sovrascrivere il job?')).then(function () {
+              return _this.executeForceUpdateAction(null);
+              });
+  }
+    
+
+    executeForceUpdateAction(action: ActivityAction): Promise<any> {
+      let opContext = this.startOperation();
+      this.beforeSave(opContext);
+        this.showLoadingIndicator = true;
+        this.talendJob.forceUpdate = true;
+        return this.flowConfigurationService.saveTalendJob(this.talendJob).then(response => {
+          if (response.success) {
+
+              let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# TalendJob salvato con successo');
+              this.activityManager.engApplication.notifyMessage(successMessage);
+              //for(let i = 0; i< this.files.length; i++){
+                if(!!this.file && this.file.length > 0) {
+                  this.saveTalend(this.talendJob, this.file[0]);
+                }
+              //}
+              this.activityManager.goBack();
+              
+          }
+          else {
+              let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+              this.activityManager.engApplication.notifyMessage(errorMessage);
+          }
+          this.showLoadingIndicator = false;
+      }).catch(() => {
+          this.showLoadingIndicator = false;
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+      }).finally(() => {
+        this._zone.run(() => {
+          this.showLoadingIndicator = false;
+          this.finalizeOperation(opContext);
+          
+        });
+      });
+  }
+
+    //Dragover listener
+    @HostListener('dragover', ['$event']) onDragOver(evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      // this.background = '#9ecbec';
+      this.opacity = '0.8'
+    }
+    
+    //Dragleave listener
+    @HostListener('dragleave', ['$event']) public onDragLeave(evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      //this.background = '#f5fcff'
+      this.opacity = '1'
+    }
+    
+    //Drop listener
+    @HostListener('drop', ['$event']) public ondrop(evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      //this.background = '#f5fcff'
+      this.opacity = '1'
+      let files = evt.dataTransfer.files;
+      if (files.length > 0) {
+        this.onFileDropped.emit(files)
+      }
+    }
+
+    allowDrop(ev) {
+      ev.preventDefault();
+    }
+
+    uploadFile(event) {
+      this.modAllowed = false;
+        let inputFile = event.dataTransfer.files[0];
+        this.readFile(inputFile).then((file) => {
+
+          this.file = [file];
+          this.files = [file.name];
+
+          let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# File caricato');
+          this.activityManager.engApplication.notifyMessage(successMessage);
+
+          let el: HTMLElement = document.getElementById('jobTalendJarInput');
+          el.nodeValue = undefined;
+      
+      });
+
+    }
+
+    uploadClickFile(event) {  
+      this.modAllowed = false;
+      let inputFile = event[0];
+      this.readFile(inputFile).then((file) => {
+
+        this.file = [file];
+        this.files = [file.name];
+
+        let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# File caricato');
+        this.activityManager.engApplication.notifyMessage(successMessage);
+
+        let el: HTMLElement = document.getElementById('jobTalendJarInput');
+        el.nodeValue = undefined;
+    
+    });
+
+  }
+
+    deleteAttachment(index) {
+      this.files.splice(index, 1);
+      this.file.splice(index, 1);
+    }
+
+    readFile(inputFile: any): Promise<{
+      name: string;
+      size: number;
+      type: string;
+      content: any
+  }> {
+      let deferred = Promises.defer<any>()
+      var reader = new FileReader();
+      reader.onload = (onLoadEvent) => {
+          var arrayBuffer = onLoadEvent.target['result'];
+          console.log("on Load ", onLoadEvent);
+          deferred.resolve({
+              name: inputFile.name,
+              size: inputFile.size,
+              type: inputFile.type,
+              content: arrayBuffer
+          });
+      };
+      reader.onprogress = (progressEvent) => {
+          console.log("onprogress ", progressEvent)
+      };
+      reader.readAsArrayBuffer(inputFile);
+      return deferred.promise;
+  }
+
+  saveTalend(talendJob: JobTalend, file: any) {
+    this.flowConfigurationService.importTalend(talendJob, file).then(response => {
+          if (response.success) {
+              if (response.opTargetObject.error) {
+                  //this.manageError(response.opTargetObject.error);
+              }else{
+                let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# TalendJob salvato con successo');
+                this.activityManager.engApplication.notifyMessage(successMessage);
+                this.saveDependencies();
+              }
+          }
+          else {
+              let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+              this.activityManager.engApplication.notifyMessage(errorMessage);
+          }
+      }).catch((e) => {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+      });
+    return Promise.resolve();
+  }
+
+  initVersion(opt){
+        this.isDisableVersion = false;
+  this.flow = opt;
+  this.versions = opt.versions;
+  }
+
+  selecteVersion(fmversion){
+    this.version = fmversion;
+  }
+
+  uploadDipendences(el){
+    this.dipModif = true;
+    let inputFile = el.files[0];
+    el.value='';
+    this.readDip(inputFile).then((file) => {
+
+    this.dip = [file];
+    this.dipendences.push(file);
+
+    let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# File caricato');
+    this.activityManager.engApplication.notifyMessage(successMessage);
+
+    });
+}
+
+uploadAnnullamento(el) {
+  this.annullamentoModif = true;
+  let inputFile = el.files[0];
+  el.value='';
+  this.readDip(inputFile).then((file) => {
+    this.fileAnnullamento = file;
+    let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# File caricato');
+    this.activityManager.engApplication.notifyMessage(successMessage);
+    });
+}
+
+  readDip(inputFile: any): Promise<{
+    name: string;
+    size: number;
+    type: string;
+    content: any
+  }> {
+    let deferred = Promises.defer<any>()
+    var reader = new FileReader();
+    reader.onload = (onLoadEvent) => {
+        var arrayBuffer = onLoadEvent.target['result'];
+        console.log("on Load ", onLoadEvent);
+        deferred.resolve({
+            name: inputFile.name,
+            size: inputFile.size,
+            type: inputFile.type,
+            content: arrayBuffer
+        });
+    };
+    reader.onprogress = (progressEvent) => {
+        console.log("onprogress ", progressEvent)
+    };
+    reader.readAsArrayBuffer(inputFile);
+    return deferred.promise;
+  }
+
+  deleteDip(index, dip) {
+    this.deleteDipendency(index,dip);
+  }
+
+  cancellaAnnullamento() {
+    var _this = this;
+    var i18n = this.activity.getI18nService();
+    return this.activity.getUserConfirmService().askConfirmMessage
+    (i18n.instant('!i18n# Confermare la cancellazione del job di annullamento pratica?'), i18n.instant('!i18n# La dipendenza verrà cancellata fisicamente')).then(function () {
+      _this.showLoadingIndicator = true;
+      _this.flowConfigurationService.deleteDipendency(_this.fileAnnullamento).then(response => {
+        _this.showLoadingIndicator = false;
+          let result:any = response.opTargetObject;
+          if (result == 1) {
+            _this.fileAnnullamento = null;
+              let successMessage: string = _this.activityManager.engApplication.i18nInstant('!i18n# Dipendenza cancellata con successo');
+              _this.activityManager.engApplication.notifyMessage(successMessage);
+          }
+      }).catch((e) => {
+        _this.showLoadingIndicator = false;
+          let errorMessage: string = _this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+          _this.activityManager.engApplication.notifyMessage(errorMessage);
+      });
+      return Promise.resolve();
+    });
+  }
+
+  saveDependencies() {
+    if(!!this.dip && this.dipendences.length >0 && this.dipModif) {
+      for(let i=0; i<this.dipendences.length; i++) {
+        if(!this.dipendences[i].id){
+          this.saveDependency(this.dipendences[i], this.talendJob.id, false);
+        }
+      }
+    }
+    if(this.fileAnnullamento && this.annullamentoModif) {
+      this.saveDependency(this.fileAnnullamento, this.talendJob.id, true);
+    }
+  }
+
+  saveDependency(file: any, talendJobId:any, annullamento: boolean) {
+    this.showLoadingIndicator = true;
+    this.flowConfigurationService.saveDependency(file, talendJobId, annullamento ? 'ANNULLAMENTO' : 'ESTRAZIONE').then(response => {
+        this.showLoadingIndicator = false;
+        let result:any = response.opTargetObject;
+        if (result.success) {
+            let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Upload avvenuto con successo');
+            this.activityManager.engApplication.notifyMessage(successMessage);
+        }
+    }).catch((e) => {
+        this.showLoadingIndicator = false;
+        let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+        this.activityManager.engApplication.notifyMessage(errorMessage);
+    });
+    return Promise.resolve();
+  }
+
+searchDipendency(talendJob: JobTalend) {
+  this.showLoadingIndicator = true;
+  this.flowConfigurationService.searchDipendency(talendJob).then(response => {
+    if (response.success) {
+      if (response.opTargetObject.error) {
+      } else {
+        this.dipendences = [];
+        let items: any[] = response.opTargetObject.items;
+
+        for(let i = 0; i < items.length; i++) {
+          if(!items[i].dependencyType || items[i].dependencyType == 'ESTRAZIONE') {
+            this.dipendences.push(items[i]);
+          } else {
+            this.fileAnnullamento = items[i];
+          }
+        }
+                
+      }
+    }
+    else {
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+    }
+    this.showLoadingIndicator = false;
+  }).catch(() => {
+    this.showLoadingIndicator = false;
+    let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+    this.activityManager.engApplication.notifyMessage(errorMessage);
+  });
+
+  return Promise.resolve();
+}
+
+deleteDipendency(index: any, dip: any): Promise<any> {
+  var _this = this;
+          var i18n = this.activity.getI18nService();
+          return this.activity.getUserConfirmService().askConfirmMessage
+          (i18n.instant('!i18n# Confermare la cancellazione della dipendenza?'), i18n.instant('!i18n# La dipendenza verrà cancellata fisicamente')).then(function () {
+          return _this.forceDeleteDipendency(index, dip);
+          });
+}
+
+forceDeleteDipendency(index: any, dip: any){
+  this.showLoadingIndicator = true;
+  this.flowConfigurationService.deleteDipendency(dip).then(response => {
+      this.showLoadingIndicator = false;
+      let result:any = response.opTargetObject;
+      if (result == 1) {
+        this.dipendences.splice(index, 1);
+        this.dip.splice(index, 1);
+          let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Dipendenza cancellata con successo');
+          this.activityManager.engApplication.notifyMessage(successMessage);
+      }
+  }).catch((e) => {
+      this.showLoadingIndicator = false;
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+  });
+  return Promise.resolve();
+}
+isEditModeEdit(){
+  return false;
+}
+
+addXsd(){
+  let startingParams: any = {};
+  startingParams.editItem = this.flow;
+  startingParams.popupHeight = '600px';
+  startingParams.popupWidth = '800px';
+  this.activityManager.getCurrentPage().setPageMainObject(startingParams);
+  this.activityManager.startChildPopupActivityByName("addXsd.edit", startingParams);
+}
+
+setComboXSD() {
+  let serachFilter = new SearchFilters();
+  serachFilter.tabgenId = "FM_FLUSSO_XML_FILE";
+  this.flowConfigurationService.tabgenValueListSearchDataProvider(serachFilter).then(response => {
+      if (response.success) {
+          if (response.opTargetObject.error) {
+              //this.manageError(response.opTargetObject.error);
+          } else {
+            let xmlValues = response.opTargetObject.items;
+            this.searchTabgenFields(serachFilter, xmlValues);
+          }
+      }
+  }).catch(() => {
+      this.showLoadingIndicator = false;
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+  });
+  return Promise.resolve();
+}
+
+searchTabgenFields(serachFilter: any, xmlValues: any[]){
+  this.flowConfigurationService.searchTabgenFields(serachFilter.tabgenId).then(response => {
+    if (response.success) {
+        if (response.opTargetObject.error) {
+            //this.manageError(response.opTargetObject.error);
+        } else {
+          let xmlColumns = response.opTargetObject.items;
+          this.comboXSD = this.convertColumn(xmlValues, xmlColumns);
+        }
+    }
+}).catch(() => {
+    this.showLoadingIndicator = false;
+    let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+    this.activityManager.engApplication.notifyMessage(errorMessage);
+});
+return Promise.resolve();
+}
+
+convertColumn(xmlValues: any[], xmlColumns: any[]): Array<any> {
+    
+  let k = xmlValues.length;
+  let h = xmlColumns.length;
+  let data = new Array(k);
+  for (let i = 0; i < k; i++) {
+      data[i] = {};
+      for (let j = 1; j <= h; j++) {
+          let valueColumn = xmlColumns[j-1].tabgenValueColumn;
+          let columnValue = xmlValues[i][valueColumn.toLowerCase()];
+          let columnName = xmlColumns[j-1].description;
+          data[i][columnName] = columnValue;
+      }
+  }
+  let comboXSD: any[] = [];
+  for(let i=0; i<data.length; i++){
+    if(data[i]["ID_FLUSSO"] == this.flow.id){
+      comboXSD.push(data[i]);
+    }
+  }
+  return comboXSD;
+}
+
+
+uploadXsd(el, sez){
+  this.xsdModif = true;
+  let inputFile = el.files[0];
+  el.value='';
+  this.readXsd(inputFile).then((file) => {
+
+  this.xsd = [file];
+  let xsdObj = new xsdTalend();
+  xsdObj.xsd = file;
+  xsdObj.sez = sez;
+  this.xsdList.push(xsdObj);
+
+  let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# File caricato');
+  this.activityManager.engApplication.notifyMessage(successMessage);
+  });
+}
+
+readXsd(inputFile: any): Promise<{
+  name: string;
+  size: number;
+  type: string;
+  content: any
+}> {
+  let deferred = Promises.defer<any>()
+  var reader = new FileReader();
+  reader.onload = (onLoadEvent) => {
+      var arrayBuffer = onLoadEvent.target['result'];
+      console.log("on Load ", onLoadEvent);
+      deferred.resolve({
+          name: inputFile.name,
+          size: inputFile.size,
+          type: inputFile.type,
+          content: arrayBuffer
+      });
+  };
+  reader.onprogress = (progressEvent) => {
+      console.log("onprogress ", progressEvent)
+  };
+  reader.readAsArrayBuffer(inputFile);
+  return deferred.promise;
+}
+
+saveXsd(file: any, flowName:any, sez: any){
+this.showLoadingIndicator = true;
+this.flowConfigurationService.saveXsd(file, flowName, sez).then(response => {
+    this.showLoadingIndicator = false;
+    let result:any = response.opTargetObject;
+    if (result.success) {
+        let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Upload avvenuto con successo');
+        this.activityManager.engApplication.notifyMessage(successMessage);
+    } else {
+    }
+}).catch((e) => {
+    this.showLoadingIndicator = false;
+    let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+    this.activityManager.engApplication.notifyMessage(errorMessage);
+});
+return Promise.resolve();
+}
+
+
+}

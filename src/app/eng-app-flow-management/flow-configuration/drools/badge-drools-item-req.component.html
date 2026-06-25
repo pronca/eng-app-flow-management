@@ -1,0 +1,53 @@
+<div class="badge" [class.selected-item]="searchComponent.isItemSelected(item)" [ngClass]="getGlobalItemStyleValues()">
+
+    <div class="bend">
+
+    </div>
+
+    <div class="header" (click)="openChildActivity('Modifica',false)">
+        {{item.flowDescription}}
+    </div>
+
+    <div class="content" (click)="openChildActivity('Modifica',false)">
+
+        <div *ngIf="mainImageValue" class="left-col">
+            <ng-container>
+
+            </ng-container>
+        </div>
+
+        <div class="body">
+            <item-values-renderer renderStyle="COLUMN" [item]="item" [context]="getItemsRendererContext()"
+                [values]="badgeBodyValues">
+            </item-values-renderer>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="action">
+            <input #droolsFileUpload style="visibility: hidden; width: 0px"
+                id="droolsFileUpload{{item.flowId}}{{item.versionId}}" name="file" type="file"
+                (change)="fileChanged($event, item, '1')">
+            <input #droolsFileUpload2 style="visibility: hidden; width: 0px"
+                id="droolsFileUpload2{{item.flowId}}{{item.versionId}}" name="file" type="file"
+                (change)="fileChanged($event, item, '2')">
+            <button  matTooltip="Cancella tutte le regole di validazione" mat-button
+            (click)="deleteAll('delete', request, item, $event)"><mat-icon>delete</mat-icon></button>
+            <button  matTooltip="Aggiungi Regole di validazione" mat-button
+            (click)="add('delete', request, item, $event)"><mat-icon>attach_file</mat-icon></button>
+            <button *ngIf="item.flowType === 'AZIENDA'" matTooltip="Aggiungi Regole di validazione trasversale" mat-button
+            (click)="add2('delete', request, item, $event)"><mat-icon>attachment</mat-icon></button>
+            <button  matTooltip="Scarica tutte le regole di validazione" mat-button
+            (click)="download('delete', request, item, $event)"><mat-icon>get_app</mat-icon></button>
+        </div>
+    </div>
+
+    
+    <div>
+        <div class="footer" *ngIf="hasActions()">
+            <item-actions [item]="item" [actions]="actions">
+            </item-actions>
+        </div>
+    </div>
+
+</div>

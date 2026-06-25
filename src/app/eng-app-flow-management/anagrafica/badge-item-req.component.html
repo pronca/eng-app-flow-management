@@ -1,0 +1,56 @@
+<div class="badge" [class.selected-item]="searchComponent.isItemSelected(item)" [ngClass]="getGlobalItemStyleValues()">
+
+    <div class="bend">
+
+    </div>
+
+    <div class="header" (click)="openChildActivity('Modifica',false)">
+        {{item.id}}
+    </div>
+
+    <div class="content" (click)="openChildActivity('Modifica',false)">
+
+        <div *ngIf="mainImageValue" class="left-col">
+            <ng-container>
+
+                <!-- <mat-icon class="box-image" svgIcon="{{badgeIcon}}"></mat-icon> -->
+            </ng-container>
+        </div>
+
+        <div class="body">
+            <item-values-renderer renderStyle="COLUMN" [item]="item" [context]="getItemsRendererContext()"
+                [values]="badgeBodyValues">
+            </item-values-renderer>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="action">
+
+            <button matTooltip="Export tabella" mat-button
+            (click)="exportcheck('DOWNLOAD', request, item, $event)"><mat-icon>get_app</mat-icon></button>
+            <button [disabled]= "permissionEdit" matTooltip="Elimina tabella" mat-button
+            (click)="delete('delete', request, item, $event)"><mat-icon>delete</mat-icon></button>
+
+
+            <!-- <i matTooltip="Export tabella" [ngClass]="getClass(request)"
+                (click)="export('DOWNLOAD', request, item, $event)">get_app</i> -->
+
+            <!-- <i class="material-icons" matTooltip="Export tabella" (click)="export()">get_app</i> -->
+
+            <!-- <i class="material-icons" matTooltip="" style="opacity: 0;">delete</i> -->
+
+            <!-- <i class="material-icons" matTooltip="Elimina tabella" (click)="delete()">delete</i> -->
+
+            <!-- <i matTooltip="Elimina tabella" [ngClass]="getClass(request)"
+            (click)="delete('delete', request, item, $event)">delete</i> -->
+        </div>
+    </div>
+
+    <div class="footer" *ngIf="hasActions()">
+        <item-actions [item]="item" [actions]="actions">
+        </item-actions>
+    </div>
+
+
+</div>

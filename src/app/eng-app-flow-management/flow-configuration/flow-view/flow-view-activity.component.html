@@ -1,0 +1,344 @@
+<div class="background">
+    
+<!-- <mat-toolbar color="primary">
+        <span>{{fmflow.name}}&nbsp;({{version}})</span>
+</mat-toolbar> -->
+
+<mat-horizontal-stepper #stepper (selectionChange)="changeStep($event)" [linear]="isLinear">
+
+    <mat-step [stepControl]="firstFormGroup" *ngFor="let sez of sezioni; let i = index">
+        <ng-template matStepLabel>{{sez.name}}</ng-template>
+
+        <!-- FILTRI -->
+
+        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+
+        <mat-form-field class="checkbox">
+            <input class="fixHidden" style="display: none;" matInput>
+            <mat-checkbox [(ngModel)]="scartiRegione" matTooltip="Mostra solo pratiche contenenti ritorni regionali">
+                Scarti Regione
+            </mat-checkbox>
+        </mat-form-field>
+
+        <!-- Filtro Codice Azienda -->
+        <mat-form-field class="form-campo short">
+        <mat-label>{{ codAziendaLabel }}</mat-label>
+        <mat-select [(ngModel)]="codiceAzienda" (selectionChange)="onCodiceAziendaChange($event)">
+            <mat-option value=""></mat-option>
+            <mat-option *ngFor="let option of aziendeOptions" [value]="option">
+            {{ option }}
+            </mat-option>
+        </mat-select>
+        </mat-form-field>
+
+        <!-- Filtro Codice Presidio -->
+        <mat-form-field *ngIf="showPresidio" class="form-campo short">
+        <mat-label>{{ codPresidioLabel }}</mat-label>
+        <mat-select [(ngModel)]="codicePresidio"
+                    (selectionChange)="onCodicePresidioChange($event)"
+                    [disabled]="!presidiOptions || presidiOptions.length === 0">
+            <mat-option value=""></mat-option>
+            <mat-option *ngFor="let option of presidiOptions" [value]="option">
+                {{ option }}
+            </mat-option>
+        </mat-select>
+        </mat-form-field>
+
+        <!-- Campo Tipo Importazione allungato -->
+        <mat-form-field class="form-campo long">
+        <mat-label>Tipologia Importazione</mat-label>
+        <mat-select [(ngModel)]="tipoImportazione" (selectionChange)="onTipologiaImportChange($event)">
+            <mat-option value=""></mat-option>
+            <mat-option *ngFor="let option of tipologiaOptions" [value]="option">
+            {{ option }}
+            </mat-option>
+        </mat-select>
+        </mat-form-field>
+
+        <mat-form-field class="form-campo short">
+            <mat-label>Campi</mat-label>
+            <mat-select [(ngModel)]="selectedValue" (selectionChange)="refreshCombo($event, i)">
+                <mat-option></mat-option>
+                <ng-container
+                    *ngFor="let campi of sez.flowTableFieldList | orderBy: {'property': 'descriptionsm', 'direction': 1}">
+                    <mat-option
+                        *ngIf="campi.name.toLowerCase() !== 'codiceazienda' && campi.name.toLowerCase() !== 'codicepresidio'"
+                        [value]="campi">
+                        {{ campi.descriptionsm }}
+                </mat-option>
+                </ng-container>
+                <mat-option *ngFor="let sys of fieldSys" [value]="sys">
+                    {{sys.descriptionsm}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-form-field class="form-campo short" *ngIf="!hiddenValue">
+        <mat-label>Valori</mat-label>
+        <input
+            matInput
+            [(ngModel)]="selectText"
+            placeholder="Inserisci valore"
+            aria-label="Valore filtro"
+            title="Valore filtro"
+            (keydown.enter)="startSearch($event,i)">
+        </mat-form-field>
+
+        <mat-form-field *ngIf="hiddenDate" class="fieldData short">
+            <input [(ngModel)]="dateInTemp"
+                    [matDatepicker]="picker1"
+                    matInput placeholder="Da">
+            <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+            <mat-datepicker #picker1></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field *ngIf="hiddenDate" class="fieldData short">
+            <input [(ngModel)]="dateOutTemp"
+                    [matDatepicker]="picker1"
+                    matInput placeholder="A">
+            <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+            <mat-datepicker #picker1></mat-datepicker>
+        </mat-form-field>
+
+        <button mat-icon-button (click)="startSearch($event,i)" matTooltip="Cerca" [disabled]="emptyTables">
+            <mat-icon>search</mat-icon>
+        </button>
+
+        <button mat-icon-button (click)="resetSearch()" matTooltip="Resetta filtri">
+            <mat-icon>delete_sweep</mat-icon>
+        </button>
+
+    </div>
+
+
+    <mat-chip-list aria-label="filter selection" class="chipList">
+        <mat-chip *ngFor="let field of filterFlow.field; index as i" 
+                [removable]="removable" 
+                (removed)="remove(field,i)">
+        <b>S{{field["section"]}}</b>,{{field["label"] || field["name"]}} : {{field.param}}
+        <mat-icon matChipRemove *ngIf="removable">cancel</mat-icon>
+        </mat-chip>
+        <div *ngFor="let fieldData of filterFlow.fieldData;index as i">
+            <mat-chip *ngIf="fieldData.dateIn"  [removable]="removable" (removed)="removeDateIn(fieldData.dateIn,i)" >
+                <b>S{{fieldData["section"]}}</b>,{{fieldData["name"]}} da : {{dateConvert(fieldData.dateIn)}}
+                <mat-icon matChipRemove *ngIf="removable">cancel</mat-icon>
+            </mat-chip>
+            <mat-chip *ngIf="fieldData.dateOut"  [removable]="removable" (removed)="removeDateOut(fieldData.dateOut,i)" >
+                <b>S{{fieldData["section"]}}</b>,{{fieldData["name"]}} a : {{dateConvert(fieldData.dateOut)}}
+                <mat-icon matChipRemove *ngIf="removable">cancel</mat-icon>
+            </mat-chip>
+        </div>
+    </mat-chip-list>
+    
+    <!-- END FILTRI -->
+
+        <!-- TABELLA -->
+        <div class="example-container">
+            
+            <div class="flowviewreps">
+
+            <table mat-table [dataSource]="dataSource[i]" multiTemplateDataRows (matSortChange)="sortData($event,i)" matSort>
+
+                <ng-container matColumnDef="FILTER">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>&nbsp;&nbsp;&nbsp;FILTRA&nbsp;&nbsp;&nbsp;</th>
+                    <td mat-cell *matCellDef="let element"> 
+                        <button mat-icon-button (click)="section($event, element, i)">
+                            <mat-icon>{{filtered ? 'zoom_out' : 'zoom_in'}}</mat-icon>
+                        </button>
+                    </td>
+                </ng-container>
+
+                <ng-container matColumnDef="ERRORS">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>&nbsp;&nbsp;&nbsp;V.INT&nbsp;&nbsp;&nbsp;</th>
+                    <td mat-cell *matCellDef="let element"> 
+                        <button mat-icon-button *ngIf="element.STATUS == 'ERROR' || element.STATUS == 'WARNING'" (click)="expandedElement = expandedElement === element ? null : element; getErrors($event, element, i); showRegAcc = false; expandedElementReg = null">
+                            <mat-icon>{{expandedElement === element ? 'expand_less' : 'expand_more'}}</mat-icon>
+                        </button>
+                        <button mat-icon-button *ngIf="element.STATUS != 'ERROR' && element.STATUS != 'WARNING'" disabled = true>
+                            <mat-icon>{{expandedElement === element ? 'expand_less' : 'expand_more'}}</mat-icon>
+                        </button>
+                    </td>
+                </ng-container>
+
+                <ng-container *ngIf="regAcc == true" matColumnDef="REG">
+                        <th mat-header-cell *matHeaderCellDef mat-sort-header>&nbsp;&nbsp;&nbsp;V.REG&nbsp;&nbsp;&nbsp;</th>
+                        <td mat-cell *matCellDef="let element"> 
+                            <button mat-icon-button *ngIf="element.STATUS_REGION == 'SCARTO' || element.STATUS_REGION == 'SEGNALAZIONE'" (click)="expandedElementReg = expandedElementReg === element ? null : element; getReturns($event, element, i); showRegAcc = true; expandedElement = null">
+                                <mat-icon>{{expandedElementReg === element ? 'expand_less' : 'expand_more'}}</mat-icon>
+                            </button>
+                            <button mat-icon-button *ngIf="element.STATUS_REGION != 'SCARTO' && element.STATUS_REGION != 'SEGNALAZIONE'" disabled = true>
+                                <mat-icon>{{expandedElementReg === element ? 'expand_less' : 'expand_more'}}</mat-icon>
+                            </button>
+                        </td>
+                </ng-container>
+                <!-- <button mat-icon-button *ngIf="element.STATUS_REGION == null" disabled = true>
+                        <mat-icon>{{expandedElement === element ? 'expand_less' : 'expand_more'}}</mat-icon>
+                    </button> -->
+
+                <div *ngFor="let field of colMap[i]; index as j ">
+                    <ng-container [matColumnDef]="field.name">
+                        <th mat-header-cell *matHeaderCellDef sticky mat-sort-header>&nbsp;&nbsp;&nbsp;{{field.description.toUpperCase()}}</th>
+                        <td mat-cell *matCellDef="let element"> &nbsp;&nbsp;{{element[field.name]}}&nbsp;&nbsp; </td>
+                    </ng-container>
+                </div>
+
+                <ng-container matColumnDef="expandedDetail" >
+                    <td mat-cell *matCellDef="let element" [attr.colspan]="1000" class="prova">
+                    
+                    <!-- TABELLA ERRORI -->
+                    <div *ngIf="showRegAcc == false" class="flow-view-errors-detail" style="z-index: 9999; box-shadow: 4px 4px 4px #007575; margin-left: 5px; margin-top:13px;">
+
+                    <div *ngIf="showRegAcc == false" style="overflow-x:auto" class="example-element-detail" [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'" >
+                        
+                        <table mat-table [dataSource]="dataSourceErrors"> 
+
+                            <div *ngFor="let fieldErrors of displayedColumnsErrors; index as j ">
+
+                                <div *ngIf="fieldErrors != 'GRAVITA'">
+                                    <ng-container [matColumnDef]="fieldErrors">
+                                        <th mat-header-cell *matHeaderCellDef class="provaHeader"> &nbsp;&nbsp;&nbsp;{{fieldErrors}}&nbsp;&nbsp;&nbsp; </th>
+                                        <td mat-cell *matCellDef="let elementErrors" class="provaCell">&nbsp;{{elementErrors[fieldErrors]}}&nbsp;</td>
+                                    </ng-container>
+                                </div>
+
+                                <div *ngIf="fieldErrors == 'GRAVITA'">
+                                    <ng-container [matColumnDef]="fieldErrors">
+                                        <th mat-header-cell *matHeaderCellDef class="provaHeader">GRAVITA'</th>
+                                        <td mat-cell *matCellDef="let elementErrors" class="provaCell">
+                                            <mat-icon *ngIf="elementErrors['GRAVITA'] == 'WARNING'" matTooltip="WARNING" style="color: orange">warning</mat-icon>
+                                            <mat-icon *ngIf="elementErrors['GRAVITA'] == 'ERROR'" matTooltip="ERROR" style="color: crimson">error</mat-icon>
+                                        </td>
+                                    </ng-container>
+                                </div>
+
+                            </div>
+
+                            <tr mat-header-row *matHeaderRowDef="displayedColumnsErrors"></tr>
+                
+                            <tr mat-row *matRowDef="let elementErrors; columns: displayedColumnsErrors;" class="prova"></tr>
+                                                        
+                        </table>
+                    </div>
+
+                    <div *ngIf="showRegAcc == false" class="example-element-detail" [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'">
+                        
+                    <mat-toolbar *ngIf="showRegAcc == false" class="PaginatorToolbar">
+                        <div class="flow-view-errors-toolbar" style="margin: 0 auto; background-color: #cfd8dc; width: 100%; padding: 0px;">
+                            <mat-icon *ngIf="blockLeftAcc === true" (click)="getServerDataLeftAcc($event, element, i)" style="cursor:pointer" style="color: rgba(0,0,0,0.38)">keyboard_arrow_left</mat-icon> 
+                            <mat-icon *ngIf="blockLeftAcc === false" (click)="getServerDataLeftAcc($event, element, i)" style="cursor:pointer" >keyboard_arrow_left</mat-icon> 
+                            <mat-icon *ngIf="blockRightAcc === true" (click)="getServerDataRightAcc($event, element, i)" style="cursor:pointer" style="color: rgba(0,0,0,0.38)">keyboard_arrow_right</mat-icon>
+                            <mat-icon *ngIf="blockRightAcc === false" (click)="getServerDataRightAcc($event, element, i)" style="cursor:pointer" >keyboard_arrow_right</mat-icon>
+                            &nbsp;{{firstResultDisplayAcc}}-{{countError}} di {{lenghtError}}
+                        </div>
+                    </mat-toolbar>
+                    </div>
+                    </div>
+
+                    <!-- TABELLA RITORNI REGIONE -->
+
+                    <div *ngIf="showRegAcc == true" class="flow-view-errors-detail" style="z-index: 9999; box-shadow: 4px 4px 4px #007575; margin-left: 5px; margin-top:13px;">
+
+                    <div *ngIf="showRegAcc == true" class="example-element-detail" style="overflow-x:auto" [@detailExpand]="element == expandedElementReg ? 'expanded' : 'collapsed'" >
+                    
+                        <table *ngIf="showRegAcc == true" mat-table [dataSource]="dataSourceReturns"> 
+
+                            <div *ngFor="let fieldReturns of displayedColumnsReturns; index as j ">
+
+                                <ng-container [matColumnDef]="fieldReturns">
+                                    <th mat-header-cell *matHeaderCellDef class="provaHeader"> &nbsp;&nbsp;&nbsp;{{fieldReturns}}&nbsp;&nbsp;&nbsp; </th>
+                                    <td mat-cell *matCellDef="let elementReturns" class="provaCell">&nbsp;{{elementReturns[fieldReturns]}}&nbsp;</td>
+                                </ng-container>
+
+                            </div>
+
+                            <tr mat-header-row *matHeaderRowDef="displayedColumnsReturns"></tr>
+                
+                            <tr mat-row *matRowDef="let elementReturns; columns: displayedColumnsReturns;" class="prova"></tr>
+                                                        
+                        </table>
+
+                    </div>
+
+                    <div *ngIf="showRegAcc == true" class="example-element-detail" [@detailExpand]="element == expandedElementReg ? 'expanded' : 'collapsed'">
+
+                    <mat-toolbar *ngIf="showRegAcc == true" class="PaginatorToolbar">
+                        <div class="flow-view-errors-toolbar" style="margin: 0 auto; background-color: #cfd8dc; width: 100%; padding: 0px;">
+                        <mat-icon *ngIf="blockLeftReg === true" (click)="getServerDataLeftReg($event, element, i)" style="cursor:pointer" style="color: rgba(0,0,0,0.38)">keyboard_arrow_left</mat-icon> 
+                        <mat-icon *ngIf="blockLeftReg === false" (click)="getServerDataLeftReg($event, element, i)" style="cursor:pointer" >keyboard_arrow_left</mat-icon> 
+                        <mat-icon *ngIf="blockRightReg === true" (click)="getServerDataRightReg($event, element, i)" style="cursor:pointer" style="color: rgba(0,0,0,0.38)">keyboard_arrow_right</mat-icon>
+                        <mat-icon *ngIf="blockRightReg === false" (click)="getServerDataRightReg($event, element, i)" style="cursor:pointer" >keyboard_arrow_right</mat-icon>
+                        &nbsp;{{firstResultDisplayReg}}-{{countReturns}} di {{lenghtReturns}}
+                        </div>
+                    </mat-toolbar>
+                    </div>
+                    </div>
+                    </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns[i]; sticky: true"></tr>
+
+                <tr mat-row *matRowDef="let element; columns: displayedColumns[i];"
+                    class="example-element-row"></tr>
+                
+                <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row" ></tr>
+
+            </table>
+            </div>
+
+            <div class="toolbarBottom">
+                <mat-toolbar color="primary" >
+                    <button *ngIf="!emptyTables && i === 0 && blockLeft === false" mat-icon-button matTooltip="Prima pagina" (click)= "goToFirstPage()" style="cursor:pointer">
+                        <mat-icon>first_page</mat-icon>
+                    </button>
+                    <button *ngIf="!emptyTables && i === 0 && blockLeft === true" mat-icon-button matTooltip="Prima pagina" (click)= "goToFirstPage()" style="cursor:default; color: rgba(0,0,0,0.38)">
+                        <mat-icon>first_page</mat-icon>
+                    </button>
+                    <button *ngIf="emptyTables && i === 0" mat-icon-button disabled="true" style="cursor:default">
+                        <mat-icon>first_page</mat-icon>
+                    </button>
+                    <mat-icon *ngIf="blockLeft === true && i === 0" (click)="getServerDataLeft(i)" style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_left</mat-icon>
+                    <mat-icon *ngIf="blockLeft === false && i === 0" (click)="getServerDataLeft(i)" style="cursor:pointer">keyboard_arrow_left</mat-icon>
+                    <mat-icon *ngIf="blockRight === true && i === 0" (click)="getServerDataRight(i)" style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_right</mat-icon>
+                    <mat-icon *ngIf="blockRight === false && i === 0" (click)="getServerDataRight(i)" style="cursor:pointer">keyboard_arrow_right</mat-icon>
+                    <span *ngIf="i === 0">&nbsp;{{firstResultDisplay}}-{{endPage}}&nbsp;&nbsp;&nbsp;</span>
+                    <mat-icon *ngIf="blockLeftSez[i] === true && i > 0" (click)="getServerDataLeft(i)" style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_left</mat-icon>
+                    <mat-icon *ngIf="blockLeftSez[i] === false && i > 0" (click)="getServerDataLeft(i)" style="cursor:pointer">keyboard_arrow_left</mat-icon>
+                    <mat-icon *ngIf="blockRightSez[i] === true && i > 0" (click)="getServerDataRight(i)" style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_right</mat-icon>
+                    <mat-icon *ngIf="blockRightSez[i] === false && i > 0" (click)="getServerDataRight(i)" style="cursor:pointer">keyboard_arrow_right</mat-icon>
+                    <span *ngIf="i > 0">&nbsp;{{firstResultSez[i]}}-{{count[i]}}&nbsp;&nbsp;&nbsp;</span>
+                    <button *ngIf="!emptyTables && i === 0 && blockRight === false" mat-icon-button matTooltip="Ultima pagina" (click)= "goToLastPage()" style="cursor:pointer">
+                        <mat-icon>last_page</mat-icon>
+                    </button>
+                    <button *ngIf="!emptyTables && i === 0 && blockRight === true" mat-icon-button matTooltip="Ultima pagina" (click)= "goToLastPage()" style="cursor:default; color: rgba(0,0,0,0.38)">
+                        <mat-icon>last_page</mat-icon>
+                    </button>
+                    <button *ngIf="emptyTables && i === 0" mat-icon-button disabled="true" style="cursor:default">
+                        <mat-icon>last_page</mat-icon>
+                    </button>
+                    <button *ngIf="!emptyTables" mat-button (click)="contaPratiche()" style="cursor:pointer" matTooltip="Pratiche totali"><mat-icon>keyboard_tab</mat-icon></button>
+                    <button *ngIf="emptyTables" mat-button style="cursor:default" disabled="true"><mat-icon>keyboard_tab</mat-icon></button>
+                    &nbsp;{{countPratiche}}&nbsp;<span *ngIf="countPratiche">{{countPratiche == 1 ? 'pratica' : 'pratiche'}}</span>
+                </mat-toolbar>
+    
+            </div>
+
+        </div>
+
+    </mat-step>
+
+</mat-horizontal-stepper>
+
+</div>
+
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+    </div>

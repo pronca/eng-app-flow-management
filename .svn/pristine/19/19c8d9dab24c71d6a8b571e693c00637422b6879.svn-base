@@ -1,0 +1,94 @@
+<div class="flow-extract-field">
+    <!-- FILTRI -->
+    <mat-card class="filtri">
+        <div >
+            <mat-form-field>
+                <mat-label>Codice Fiscale</mat-label>
+                <input (keydown.enter)="startSearch()" [(ngModel)]="taxcode"
+                        matInput placeholder="Codice Fiscale"/>
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Nome</mat-label>
+                <input (keydown.enter)="startSearch()" [(ngModel)]="name"
+                       matInput placeholder="Nome"/>
+            </mat-form-field> 
+             <mat-form-field>
+                <mat-label>Cognome</mat-label>
+                <input (keydown.enter)="startSearch()" [(ngModel)]="surname"
+                        matInput placeholder="Cognome"/>
+            </mat-form-field>
+            <mat-form-field>
+                <input [(ngModel)]="birthDate"
+                       [matDatepicker]="picker1"
+                       matInput placeholder="Data Nascita">
+                <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+                <mat-datepicker #picker1></mat-datepicker>
+            </mat-form-field>
+            
+            <button (click)="startSearch()" mat-button matTooltip="Cerca">
+                <mat-icon>search</mat-icon>
+            </button>
+        </div>
+    </mat-card>
+
+    <!-- END FILTRI -->
+
+    <div *ngFor="let paziente of pazienti; index as i">
+        <mat-accordion>
+            <mat-expansion-panel class="dettaglio" [expanded]="false">
+                <mat-expansion-panel-header class="header-tf">
+                    <mat-panel-title class="mat-title2">
+                        <b> {{paziente.flow.name}} </b>
+                    </mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <table mat-table [dataSource]="dataSource[i]" multiTemplateDataRows>
+                    <caption></caption>
+                        <div *ngFor="let field of displayedColumns[i]; index as j ">
+                            <div *ngIf="field !== 'index'">
+                                <ng-container [matColumnDef]="field">
+                                    <th mat-header-cell *matHeaderCellDef sticky> &nbsp;&nbsp;&nbsp;{{field}}&nbsp;&nbsp;&nbsp; </th>
+                                    <td mat-cell (click)="goEditActivity($event, element, i)" *matCellDef="let element"> &nbsp;&nbsp;{{element[field]}}&nbsp;&nbsp; </td>
+                                </ng-container>
+                            </div>
+                        </div>
+
+                        <tr mat-header-row *matHeaderRowDef="displayedColumns[i]; sticky: true"></tr>
+
+                        <tr mat-row *matRowDef="let element; columns: displayedColumns[i];" class="prova"></tr>
+
+                </table>
+
+            </mat-expansion-panel>
+        </mat-accordion>
+    </div>
+
+
+
+
+    <!-- <table #table (matSortChange)="sortData($event)" [dataSource]="dataSource" class="mat-elevation-z8" mat-table
+           matSort>
+
+        <ng-container matColumnDef="id">
+            <th *matHeaderCellDef mat-header-cell mat-sort-header>  ID </th>
+            <td *matCellDef="let element" mat-cell> {{element.id}} </td>
+        </ng-container>
+
+    </table> -->
+
+</div> 
+
+<div *ngIf="showLoadingIndicator" class="mask">
+    <div *ngIf="showLoadingIndicator" class="lds-roller">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+</div>
+
+             

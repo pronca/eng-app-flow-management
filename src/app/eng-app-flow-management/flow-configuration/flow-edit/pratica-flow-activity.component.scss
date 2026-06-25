@@ -1,0 +1,533 @@
+:host ::ng-deep .example-container {
+  overflow-x: auto;             /* la barra compare SOLO se serve */
+  overflow-y: auto;
+  flex: 1;
+  background-color: #fafafa;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-bottom: 64px;
+}
+
+:host ::ng-deep tr.mat-row,
+:host ::ng-deep tr.mat-header-row {
+  text-align: center;
+}
+
+:host ::ng-deep .mat-row.selected{
+    background-color: #d8e1e5;
+}
+
+:host ::ng-deep th.mat-header-cell,
+:host ::ng-deep td.mat-cell,
+:host ::ng-deep td.mat-footer-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  min-width: 50px !important;       /* ➤ ridotto per evitare scroll forzato */
+  max-width: 240px !important;      /* ➤ evita allargamento esagerato */
+  box-sizing: border-box;
+}
+
+:host ::ng-deep th.mat-header-cell{
+   background-color: #fafafa;
+  font-weight: 600;
+  color: #007575;
+  font-size: 10px;
+  text-align: center; 
+}
+
+:host ::ng-deep th.mat-header-cell,
+:host ::ng-deep td.mat-cell,
+:host ::ng-deep td.mat-footer-cell {
+  white-space: nowrap;          /* evita wrap */
+  overflow: hidden;             /* nasconde l’eccesso */
+  text-overflow: ellipsis;      /* … quando non c’è spazio */
+  padding: 0 8px;
+  min-width: 80px;              /* evita colonne troppo strette */
+  max-width: 280px;             /* evita colonne troppo larghe */
+  box-sizing: border-box;
+}
+
+:host ::ng-deep .mat-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed !important;   /* ➤ evita allargamento orizzontale */
+}
+
+/* ⬇️ Override mirato per colonne azione */
+:host ::ng-deep .mat-table th.mat-header-cell.mat-column-LINK,
+:host ::ng-deep .mat-table td.mat-cell.mat-column-LINK,
+:host ::ng-deep .mat-table th.mat-header-cell.cdk-column-LINK,
+:host ::ng-deep .mat-table td.mat-cell.cdk-column-LINK,
+:host ::ng-deep .mat-table th.mat-header-cell.mat-column-FLOWVIEW,
+:host ::ng-deep .mat-table td.mat-cell.mat-column-FLOWVIEW,
+:host ::ng-deep .mat-table th.mat-header-cell.cdk-column-FLOWVIEW,
+:host ::ng-deep .mat-table td.mat-cell.cdk-column-FLOWVIEW {
+  width: 64px !important;
+  min-width: 48px !important;   /* override del min-width globale 80px */
+  max-width: 80px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+/* Header più compatto per le due colonne */
+:host ::ng-deep th.mat-header-cell.mat-column-LINK,
+:host ::ng-deep td.mat-cell.mat-column-LINK,
+:host ::ng-deep th.mat-header-cell.mat-column-FLOWVIEW,
+:host ::ng-deep td.mat-cell.mat-column-FLOWVIEW {
+  width: 60px !important;
+  min-width: 55px !important;
+  max-width: 70px !important;
+  text-align: center;
+  padding: 0 !important;
+}
+
+
+/* Bottoni/icona compatti dentro LINK/FLOWVIEW */
+:host ::ng-deep .mat-column-LINK .mat-icon-button,
+:host ::ng-deep .mat-column-FLOWVIEW .mat-icon-button {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  line-height: 34px;
+  padding: 0;
+}
+
+:host ::ng-deep .mat-column-LINK .mat-icon,
+:host ::ng-deep .mat-column-FLOWVIEW .mat-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+}
+
+/* 🔹 Colonna "Numero Errori" più stretta */
+:host ::ng-deep th.mat-header-cell.mat-column-N.-ERRORI,
+:host ::ng-deep td.mat-cell.mat-column-N.-ERRORI,
+:host ::ng-deep th.mat-header-cell.cdk-column-N.-ERRORI,
+:host ::ng-deep td.mat-cell.cdk-column-N.-ERRORI {
+  width: 60px !important;
+  min-width: 50px !important;
+  max-width: 70px !important;
+  text-align: center !important;
+  padding: 0 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 🔹 Colonna "Onere Degenza" più stretta */
+:host ::ng-deep th.mat-header-cell.mat-column-oneredegenza,
+:host ::ng-deep td.mat-cell.mat-column-oneredegenza,
+:host ::ng-deep th.mat-header-cell.cdk-column-oneredegenza,
+:host ::ng-deep td.mat-cell.cdk-column-oneredegenza {
+  width: 60px !important;
+  min-width: 50px !important;
+  max-width: 70px !important;
+  text-align: center !important;
+  padding: 0 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 🔹 Colonna "Codice Presidio" più stretta */
+:host ::ng-deep th.mat-header-cell.mat-column-codicepresidio,
+:host ::ng-deep td.mat-cell.mat-column-codicepresidio,
+:host ::ng-deep th.mat-header-cell.cdk-column-codicepresidio,
+:host ::ng-deep td.mat-cell.cdk-column-codicepresidio {
+  width: 80px !important;
+  min-width: 70px !important;
+  max-width: 90px !important;
+  text-align: center !important;
+  padding: 0 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+:host ::ng-deep th.mat-header-cell.mat-column-codicepaziente,
+:host ::ng-deep td.mat-cell.mat-column-codicepaziente,
+:host ::ng-deep th.mat-header-cell.cdk-column-codicepaziente,
+:host ::ng-deep td.mat-cell.cdk-column-codicepaziente {
+  width: 140px !important;
+  min-width: 140px !important;
+  max-width: 160px !important;
+  text-align: center !important;
+  padding: 0 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+:host ::ng-deep th.mat-header-cell.mat-column-progressivosdo,
+:host ::ng-deep td.mat-cell.mat-column-progressivosdo,
+:host ::ng-deep th.mat-header-cell.cdk-column-progressivosdo,
+:host ::ng-deep td.mat-cell.cdk-column-progressivosdo {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 140px !important;
+  text-align: center !important;
+  padding: 0 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+:host ::ng-deep th.mat-header-cell.mat-column-codiceazienda,
+:host ::ng-deep td.mat-cell.mat-column-codiceazienda,
+:host ::ng-deep th.mat-header-cell.cdk-column-codiceazienda,
+:host ::ng-deep td.mat-cell.cdk-column-codiceazienda {
+  width: 100px !important;
+  min-width: 100px !important;
+  max-width: 120px !important;
+  text-align: center !important;
+  padding: 0 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+:host ::ng-deep th.mat-header-cell.mat-column-statoscheda,
+:host ::ng-deep td.mat-cell.mat-column-statoscheda,
+:host ::ng-deep th.mat-header-cell.cdk-column-statoscheda,
+:host ::ng-deep td.mat-cell.cdk-column-statoscheda {
+  width: 100px !important;
+  min-width: 100px !important;
+  max-width: 120px !important;
+  text-align: center !important;
+  padding: 0 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+:host ::ng-deep th.mat-header-cell.mat-column-import_type,
+:host ::ng-deep td.mat-cell.mat-column-import_type,
+:host ::ng-deep th.mat-header-cell.cdk-column-import_type,
+:host ::ng-deep td.mat-cell.cdk-column-import_type,
+:host ::ng-deep th.mat-header-cell.mat-column-import_typ,
+:host ::ng-deep td.mat-cell.mat-column-import_typ,
+:host ::ng-deep th.mat-header-cell.cdk-column-import_typ,
+:host ::ng-deep td.mat-cell.cdk-column-import_typ {
+  width: 140px !important;
+  min-width: 140px !important;
+  max-width: 160px !important;
+  text-align: center !important;
+  padding: 0 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+:host ::ng-deep  .mat-paginator-outer-container {
+  display: flex;
+  background-color: #fafafa;
+}
+
+:host ::ng-deep .mat-paginator-container {
+  display: flex;
+  background-color: #fafafa;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 56px;
+  padding: 0 8px;
+  flex-wrap: wrap-reverse;
+  width: auto;
+  margin: auto;
+}
+
+.background {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  background-color: #fafafa;
+}
+
+::ng-deep .mat-horizontal-stepper-header-container {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  background-color: #fafafa;
+}
+
+::ng-deep .mat-horizontal-content-container {
+  overflow: hidden;
+  background-color: #fafafa;
+  padding: 0 24px 24px 24px;
+}
+
+::ng-deep .activity-element {
+  margin: 0px;
+  flex: 1;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  right: 0px;
+  left: 0px;
+  background-color: #fafafa;
+}
+
+.mat-chip{
+  background-color: #E0E0E0;
+  margin-bottom: 5px;
+}
+
+:host ::ng-deep .mat-paginator-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 56px;
+  padding: 0 8px;
+  flex-wrap: wrap-reverse;
+  width: auto;
+  margin: auto;
+}
+
+:host ::ng-deep .mat-sort-header-container {
+  display: inline-flex;
+  align-items: center;
+}
+
+.form-campo{
+  width: 40%;
+  padding: 5px;
+}
+
+.updateDiv{
+  right: 1%;
+  position: absolute;
+}
+
+.paginatorToolbar{
+  color: #fafafa;
+  text-decoration:  #007575;
+}
+
+.toolbarBottom{
+  bottom: 0;
+  position: fixed;
+}
+
+.prova{
+  cursor: unset !important;
+}
+
+.prova:hover{
+  background-color: white !important;  
+}
+
+.provaCell{
+  background:  #eceff1;
+}  
+
+.provaHeader{
+  background:  #cfd8dc !important;
+  // aliceblue;      
+}
+
+tr.example-detail-row {
+  height: 0;
+}
+
+tr.example-detail-row:hover {
+  background-color: white;  
+}
+
+.example-element-row td {
+  border-bottom-width: 1px;
+}
+
+.example-element-detail {
+  overflow: hidden;
+}
+
+td.mat-cell:first-of-type, td.mat-footer-cell:first-of-type, th.mat-header-cell:first-of-type {
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
+.mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 500;
+  background-color: rgba(0,0,0,0.7)
+}
+.lds-roller {
+  top:50%;
+  left:50%;
+  display: inline-block;
+  position: fixed;
+  width: 64px;
+  height: 64px;
+}
+.lds-roller div {
+  animation: lds-roller 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  transform-origin: 32px 32px;
+  
+}
+.lds-roller div:after {
+  content: " ";
+  display: block;
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffff;
+  margin: -3px 0 0 -3px;
+  z-index: 10;
+}
+.lds-roller div:nth-child(1) {
+  animation-delay: -0.036s;
+}
+.lds-roller div:nth-child(1):after {
+  top: 50px;
+  left: 50px;
+}
+.lds-roller div:nth-child(2) {
+  animation-delay: -0.072s;
+}
+.lds-roller div:nth-child(2):after {
+  top: 54px;
+  left: 45px;
+}
+.lds-roller div:nth-child(3) {
+  animation-delay: -0.108s;
+}
+.lds-roller div:nth-child(3):after {
+  top: 57px;
+  left: 39px;
+}
+.lds-roller div:nth-child(4) {
+  animation-delay: -0.144s;
+}
+.lds-roller div:nth-child(4):after {
+  top: 58px;
+  left: 32px;
+}
+.lds-roller div:nth-child(5) {
+  animation-delay: -0.18s;
+}
+.lds-roller div:nth-child(5):after {
+  top: 57px;
+  left: 25px;
+}
+.lds-roller div:nth-child(6) {
+  animation-delay: -0.216s;
+}
+.lds-roller div:nth-child(6):after {
+  top: 54px;
+  left: 19px;
+}
+.lds-roller div:nth-child(7) {
+  animation-delay: -0.252s;
+}
+.lds-roller div:nth-child(7):after {
+  top: 50px;
+  left: 14px;
+}
+.lds-roller div:nth-child(8) {
+  animation-delay: -0.288s;
+}
+.lds-roller div:nth-child(8):after {
+  top: 45px;
+  left: 10px;
+}
+@keyframes lds-roller {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.filter {
+  flex: 1 1 120px;
+  min-width: 90px;
+  max-width: 180px;
+  padding: 2px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.flowviewreps {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;                  /* barra SOLO se serve davvero */
+  max-width: 100%;
+  background-color: #fafafa;
+  box-sizing: border-box;
+}
+
+.flowviewreps::-webkit-scrollbar {
+  width: 6px;
+}
+
+.flowviewreps::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 117, 117, 0.5);
+  border-radius: 3px;
+}
+
+@media screen and (max-height: 619px) {
+  .flowviewreps {
+    max-height: 61vh;
+  }
+}
+
+@media screen and (min-height: 620px) and (max-height: 712px) {
+  .flowviewreps {
+    max-height: 65vh;
+  }
+}
+
+@media screen and (min-height: 713px) and (max-height: 800px) {
+  .flowviewreps {
+    max-height: 50vh;
+  }
+}
+
+@media screen and (min-height: 801px) and (max-height: 860px) {
+  .flowviewreps {
+    max-height: 55vh
+  }
+}
+
+@media screen and (min-height: 861px)  {
+  .flowviewreps {
+    max-height: 62vh
+  }
+}
+
+@media screen and (max-height: 619px) { .flowviewreps { max-height: 61vh; } }
+@media screen and (min-height: 620px) and (max-height: 712px) { .flowviewreps { max-height: 65vh; } }
+@media screen and (min-height: 713px) and (max-height: 800px) { .flowviewreps { max-height: 50vh; } }
+@media screen and (min-height: 801px) and (max-height: 860px) { .flowviewreps { max-height: 55vh; } }
+@media screen and (min-height: 861px)  { .flowviewreps { max-height: 62vh; } }

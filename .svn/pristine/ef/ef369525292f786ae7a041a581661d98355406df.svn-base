@@ -1,0 +1,31 @@
+@import './theme-settings.scss';
+@import './prototype-activity/search-activity/search-activity.component.scss';
+
+
+:host /deep/ .version-search-item {
+
+    item-values-renderer.values-2, item-values-renderer.column {
+    
+        display: flex;
+        flex: 100;
+        flex-direction: column;
+
+        div.item-info {
+            margin-bottom: 5px;
+            display: flex;
+
+            span.label{
+                flex: 15;
+            }
+
+            span.value{
+                flex: 85;
+            }
+
+        } 
+        
+        .mat-icon {
+            flex:85;
+        }
+    }
+}

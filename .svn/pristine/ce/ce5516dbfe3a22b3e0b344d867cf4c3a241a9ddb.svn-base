@@ -1,0 +1,26 @@
+<div>
+    <div fxLayout="column" fxLayoutAlign="center center" >
+  
+      <div class="user-box">
+  
+        <mat-icon class="user-avatar-container" >
+         account_circle
+        </mat-icon>
+  
+        <div class="user-header long-word-break">
+          <div class="name-container">
+            <span>{{name()}}</span>
+            <span *ngIf="surname()">&nbsp;<wbr>{{surname()}}</span> 
+          </div>
+          <span>{{username()}}</span>
+        </div>
+  
+      </div>
+  
+    
+  
+    </div>
+  
+  
+  
+  </div>

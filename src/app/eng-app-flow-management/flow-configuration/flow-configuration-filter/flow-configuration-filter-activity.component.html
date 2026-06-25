@@ -1,0 +1,441 @@
+<div class="flow-extract-field">
+    <mat-card class="intestazione">
+        <div>
+            <mat-form-field>
+                <input (ngModelChange)="name = $event.toUpperCase()" [(ngModel)]="name" matInput
+                       placeholder="Configurazione" required="true" type=text>
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Flusso</mat-label>
+                <mat-select [(ngModel)]="opt_id" maxlength="100" required="true">
+                    <mat-option (onSelectionChange)="initVersion(opt)" *ngFor="let opt of flows" [value]=opt.id>
+                        {{opt.name}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Versione</mat-label>
+                <mat-select [(ngModel)]="version_id" [disabled]="isDisableVersion" maxlength="100" required="true">
+                    <mat-option (onSelectionChange)="initDataField(fmversion)" *ngFor="let fmversion of versions"
+                                [value]=fmversion.id>
+                        {{fmversion.name}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-radio-group [(ngModel)]="type"
+                             [disabled]="isDisableType"
+                             >
+                <mat-radio-button [disabled]="isDisable" [value]=1 style="padding-left:2%;">Statico
+                </mat-radio-button>
+                <mat-radio-button [value]=0 style="padding-left:1%;">Dinamico</mat-radio-button>
+                <mat-radio-button [value]=2
+                                  style="padding-left:1%;"
+                                  (change)="loadFieldStandard()">
+                    Standard
+                </mat-radio-button>
+            </mat-radio-group>
+
+        </div>
+    </mat-card>
+
+
+    <!--DATE FILTER -->
+    <div *ngFor="let co of dataFilterList; index as i">
+        <div *ngIf="i<1" class="my-toolbar">
+            <mat-toolbar>Filtro Data</mat-toolbar>
+        </div>
+        <div class="date-filter">
+            <div class="align-fix">
+                <mat-form-field>
+                    <input (ngModelChange)="dataFilterList[i].name = $event.toUpperCase()"
+                           [(ngModel)]="dataFilterList[i].name"
+                           matInput placeholder="Nome Filtro" required="true"
+                           type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input (keypress)="utils.numberOnly($event)" [(ngModel)]="dataFilterList[i].position" matInput
+                           placeholder="Posizione" required="true" type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="dataFilterList[i].mandatory">
+                            Obbligatorio
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="dataFilterList[i].range">
+                            Range
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+            </div>
+            <button (click)="removeDateFilter(i)" mat-button>
+                <mat-icon>delete_forever</mat-icon>
+            </button>
+        </div>
+    </div>
+
+    <!--TEXT FILTER -->
+    <div *ngFor="let co of textFilterList; index as i">
+        <div *ngIf="i<1" class="my-toolbar">
+            <mat-toolbar>Filtro Testuale</mat-toolbar>
+        </div>
+        <div class="date-filter">
+            <div class="align-fix">
+                <mat-form-field>
+                    <input (ngModelChange)="textFilterList[i].name = $event.toUpperCase()"
+                           [(ngModel)]="textFilterList[i].name"
+                           matInput placeholder="Nome Filtro" required="true"
+                           type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input (keypress)="utils.numberOnly($event)" [(ngModel)]="textFilterList[i].position" matInput
+                           placeholder="Posizione" required="true" type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="textFilterList[i].mandatory">
+                            Obbligatorio
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+            </div>
+            <button (click)="removeTextFilter(i)" mat-button>
+                <mat-icon>delete_forever</mat-icon>
+            </button>
+        </div>
+    </div>
+
+    <!--LOOKUP FILTER -->
+    <div *ngFor="let co of lookFilterList; index as i">
+        <div *ngIf="i<1" class="my-toolbar">
+            <mat-toolbar>Filtro Lookup</mat-toolbar>
+        </div>
+        <div class="date-filter">
+            <div class="align-fix">
+                <mat-form-field>
+                    <input (ngModelChange)="lookFilterList[i].name = $event.toUpperCase()"
+                           [(ngModel)]="lookFilterList[i].name"
+                           matInput placeholder="Nome Filtro" required="true"
+                           type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input (keypress)="utils.numberOnly($event)" [(ngModel)]="lookFilterList[i].position"
+                           matInput placeholder="Posizione" required="true" type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="lookFilterList[i].mandatory">
+                            Obbligatorio
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Seleziona Tabella</mat-label>
+                    <mat-select [(ngModel)]="lookFilterList[i].filterTable" maxlength="100" required="true">
+                        <mat-option (click)="initField(combo,i,'Lookup')" *ngFor="let combo of tabgenTableFilter"
+                                    [value]="combo.id">
+                            {{combo.description}}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <!--  <mat-form-field>
+                      <mat-label>Seleziona Campo</mat-label>
+                      <mat-select [(ngModel)]="lookFilterList[i].filterField" maxlength="100" required="true">
+                          <mat-option *ngFor="let combo2 of lookFilterList[i].tableFieldFilter" [value]="combo2.id">
+                              {{combo2.description}}
+                          </mat-option>
+                      </mat-select>
+                  </mat-form-field>-->
+            </div>
+            <button (click)="removeLookupFilter(i)" mat-button>
+                <mat-icon>delete_forever</mat-icon>
+            </button>
+        </div>
+    </div>
+
+    <!--NUMERIC FILTER -->
+    <div *ngFor="let co of numericFilterList; index as i">
+        <div *ngIf="i<1" class="my-toolbar">
+            <mat-toolbar>Filtro Numerico</mat-toolbar>
+        </div>
+
+        <div class="date-filter">
+            <div class="align-fix">
+                <mat-form-field>
+                    <input (ngModelChange)="numericFilterList[i].name = $event.toUpperCase()"
+                           [(ngModel)]="numericFilterList[i].name"
+                           matInput placeholder="Nome Filtro" required="true"
+                           type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input (keypress)="utils.numberOnly($event)" [(ngModel)]="numericFilterList[i].position"
+                           matInput placeholder="Posizione" required="true" type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="numericFilterList[i].mandatory">
+                            Obbligatorio
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="numericFilterList[i].range">
+                            Range
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+            </div>
+            <button (click)="removeNumFilter(i)" mat-button>
+                <mat-icon>delete_forever</mat-icon>
+            </button>
+
+        </div>
+    </div>
+
+    <!--COMBO FILTER -->
+    <div *ngFor="let co of comboFilterList; index as i">
+
+        <div *ngIf="i<1" class="my-toolbar">
+            <mat-toolbar>Filtro Combo</mat-toolbar>
+        </div>
+
+        <div class="date-filter">
+            <div class="align-fix">
+                <mat-form-field>
+                    <input (ngModelChange)="comboFilterList[i].name = $event.toUpperCase()"
+                           [(ngModel)]="comboFilterList[i].name"
+                           matInput placeholder="Nome Filtro" required="true"
+                           type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input (keypress)="utils.numberOnly($event)" [(ngModel)]="comboFilterList[i].position"
+                           matInput placeholder="Posizione" required="true" type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="comboFilterList[i].mandatory">
+                            Obbligatorio
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Seleziona Tabella</mat-label>
+                    <mat-select [(ngModel)]="comboFilterList[i].filterTable" maxlength="100" required="true">
+                        <mat-option (click)="initField(combo,i,'ComboBox')" *ngFor="let combo of tabgenTableFilter"
+                                    [value]="combo.id">
+                            {{combo.description}}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Seleziona Campo</mat-label>
+                    <mat-select [(ngModel)]="comboFilterList[i].filterField" maxlength="100" required="true">
+                        <mat-option *ngFor="let combo2 of comboFilterList[i].tableFieldFilter"
+                                    [value]="combo2.description">
+                            {{combo2.description}}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+                <button mat-button (click)="removeComboFilter(i)">
+                    <mat-icon>delete_forever</mat-icon>
+                </button>
+        </div>
+
+    </div>
+
+    <!--RADIO FILTER -->
+    <div *ngFor="let co of radioFilterList; index as i">
+
+        <div *ngIf="i<1" class="my-toolbar">
+            <mat-toolbar>Filtro Radio</mat-toolbar>
+        </div>
+
+        <div class="date-filter">
+            <div class="align-fix">
+                <mat-form-field>
+                    <input (ngModelChange)="radioFilterList[i].name = $event.toUpperCase()"
+                           [(ngModel)]="radioFilterList[i].name"
+                           matInput placeholder="Nome Filtro" required="true"
+                           type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input (keypress)="utils.numberOnly($event)" [(ngModel)]="radioFilterList[i].position"
+                           matInput placeholder="Posizione" required="true" type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="radioFilterList[i].mandatory">
+                            Obbligatorio
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Seleziona Tabella</mat-label>
+                    <mat-select [(ngModel)]="radioFilterList[i].filterTable" maxlength="100" required="true">
+                        <mat-option (click)="initField(combo,i,'Radio')" *ngFor="let combo of tabgenTableFilter"
+                                    [value]="combo.id">
+                            {{combo.description}}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Seleziona Campo</mat-label>
+                    <mat-select [(ngModel)]="radioFilterList[i].filterField" maxlength="100" required="true">
+                        <mat-option *ngFor="let combo2 of radioFilterList[i].tableFieldFilter"
+                                    [value]="combo2.description">
+                            {{combo2.description}}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            <button (click)="removeRadioFilter(i)" mat-button>
+                <mat-icon>delete_forever</mat-icon>
+            </button>
+        </div>
+
+    </div>
+
+    <!--MULTI FILTER -->
+    <div *ngFor="let co of multiFilterList; index as i">
+
+        <div *ngIf="i<1" class="my-toolbar">
+            <mat-toolbar>Filtro MultiSelect</mat-toolbar>
+        </div>
+
+        <div class="date-filter">
+            <div class="align-fix">
+                <mat-form-field>
+                    <input (ngModelChange)="multiFilterList[i].name = $event.toUpperCase()"
+                           [(ngModel)]="multiFilterList[i].name"
+                           matInput placeholder="Nome Filtro" required="true"
+                           type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input (keypress)="utils.numberOnly($event)" [(ngModel)]="multiFilterList[i].position"
+                           matInput placeholder="Posizione" required="true" type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="multiFilterList[i].mandatory">
+                            Obbligatorio
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Seleziona Tabella</mat-label>
+                    <mat-select [(ngModel)]="multiFilterList[i].filterTable" maxlength="100" required="true">
+                        <mat-option (click)="initField(combo,i,'Multi')"
+                                    *ngFor="let combo of tabgenTableFilter"
+                                    [value]="combo.id">
+                            {{combo.description}}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Seleziona Campo</mat-label>
+                    <mat-select [(ngModel)]="multiFilterList[i].filterField" maxlength="100" required="true">
+                        <mat-option *ngFor="let combo2 of multiFilterList[i].tableFieldFilter"
+                                    [value]="combo2.description">
+                            {{combo2.description}}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            <button (click)="removeMultiFilter(i)" mat-button>
+                <mat-icon>delete_forever</mat-icon>
+            </button>
+        </div>
+
+    </div>
+
+    <!--CAMPI FILTER-->
+    <div *ngFor="let co of campiFilterList; index as i">
+
+        <div *ngIf="i<1" class="my-toolbar">
+            <mat-toolbar>Filtro Campi</mat-toolbar>
+        </div>
+
+        <div class="date-filter">
+            <div class="align-fix">
+                <mat-form-field>
+                    <input (ngModelChange)="campiFilterList[i].name = $event.toUpperCase()"
+                           [(ngModel)]="campiFilterList[i].name"
+                           matInput placeholder="Nome Filtro" required="true"
+                           type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input (keypress)="utils.numberOnly($event)" [(ngModel)]="campiFilterList[i].position"
+                           matInput placeholder="Posizione" required="true" type="text">
+                </mat-form-field>
+                <mat-form-field>
+                    <input class="fixHidden" matInput>
+                    <section>
+                        <mat-slide-toggle
+                                [(ngModel)]="campiFilterList[i].mandatory">
+                            Obbligatorio
+                        </mat-slide-toggle>
+                    </section>
+                </mat-form-field>
+                <mat-form-field>
+                    <input [(ngModel)]="campiFilterList[i].filterField" [formControl]="stateCtrl"
+                           [matAutocomplete]="auto"
+                           aria-label="Campo"
+                           matInput
+                           placeholder="Campo">
+                    <mat-autocomplete #auto="matAutocomplete" [panelWidth]=panelWidth>
+                        <mat-option *ngFor="let state of filteredStates | async" [value]="state.name">
+                            <span>{{state.name}}</span>
+                        </mat-option>
+                    </mat-autocomplete>
+                </mat-form-field>
+            </div>
+            <button (click)="removeCampiFilter(i)" mat-button>
+                <mat-icon>delete_forever</mat-icon>
+            </button>
+        </div>
+
+
+    </div>
+
+
+    <speed-dial-fab (fabClick)="onSpeedDialFabClicked($event)" [buttons]="speedDialFabButtons"
+                    [ngClass]="speedDialFabPosition"
+                    [reverse-column-direction]="speedDialFabPosition===SpeedDialFabPosition.Bottom"
+                    class="speed-dial-container"></speed-dial-fab>
+</div>
+
+<div *ngIf="showLoadingIndicator" class="mask">
+    <div *ngIf="showLoadingIndicator" class="lds-roller">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+</div>

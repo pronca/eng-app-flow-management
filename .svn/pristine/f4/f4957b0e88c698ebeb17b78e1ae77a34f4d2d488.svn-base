@@ -1,0 +1,75 @@
+<div class="background">
+<mat-card class="datasource-card">
+<div class="eng-classic-form">
+    <h3 *ngIf="isEditModeEdit()" fxFlex="100">{{'EDIT' | translate}}</h3>
+    <h3 *ngIf="isEditModeInsert()" fxFlex="100">{{'INSERT' | translate}}</h3>
+
+    <eng-text-field  fxFlex='40'
+                     required="true"
+                     maxlength="100"
+                     label='DS_LABEL_NAME'
+                     property="name">
+    </eng-text-field>
+
+    <eng-text-field  fxFlex='40'
+                     [style.padding-bottom]="'25px'"
+                     required="true"
+                     maxlength="100"
+                     label='DS_LABEL_HOSTNAME'
+                     property="hostname">
+    </eng-text-field>
+
+    <eng-text-field  fxFlex='40'
+                     [style.padding-bottom]="'25px'"
+                     required="true"
+                     maxlength="100"
+                     label='DS_LABEL_PORT'
+                     property="port">
+    </eng-text-field>
+
+    <eng-text-field  fxFlex='40'
+                     required="true"
+                     maxlength="10"
+                     label='DS_LABEL_SERVICE_NAME'
+                     property="service_name">
+    </eng-text-field>
+
+    <eng-select-field
+            fxFlex='40'
+            [style.padding-bottom]="'25px'"
+            label='DRIVER'
+            property="driver"
+            valueSet="fm/DriverDTO@global"
+            [defaultValue]=value
+            >
+            
+    </eng-select-field>
+
+    <eng-text-field  fxFlex='40'
+                     [style.padding-bottom]="'25px'"
+                     required="true"
+                     maxlength="100"
+                     label='DS_LABEL_USER'
+                     property="username">
+    </eng-text-field>
+
+    <eng-text-field [style.padding-bottom]="'25px'"
+                    fxFlex='40'
+                    label='DS_LABEL_PASS'
+                    maxlength="100"
+                    property="password"
+                    required="true"
+                    type="password">
+    </eng-text-field>
+
+    <eng-check-field
+            label='DS_LABEL_ENABLED'
+            property="enabled">
+    </eng-check-field>
+
+    
+ 
+</div>
+
+</mat-card>
+</div>

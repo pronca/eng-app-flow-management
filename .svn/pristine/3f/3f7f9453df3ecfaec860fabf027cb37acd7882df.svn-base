@@ -1,0 +1,261 @@
+import {Component, Inject} from '@angular/core';
+
+import {
+    ActivityAction,
+    ActivityActionType,
+    ActivityManager,
+    EditActivityComponent,
+    SearchActivityComponent,
+} from 'eng-app';
+
+import {FlowConfigurationService} from "../flow-configuration.service";
+import {
+    FlowExtract,
+    FlowImportRequestFieldDateDTO,
+    FlowNative,
+    FlowTableField,
+    FmFlow,
+    Version
+} from "../flow-configuration.model";
+
+
+@Component({
+  selector: 'flow-extract-activity',
+  templateUrl: './flow-extract-activity.component.html',
+  styleUrls: ['./flow-extract-activity.component.scss']
+})
+
+export class FlowExtractActivityComponent extends EditActivityComponent {
+
+  fmFlow: FmFlow[] = [];
+  flows: FlowNative[];
+  flow: FlowNative;
+  versions: Version[] = [];
+  version: Version = new Version();
+  flowExtract: FlowExtract = new FlowExtract();
+  disableAdd: boolean = false;
+  showLoadingIndicator: boolean = true;
+  isDisableVersion : boolean = true;
+  flowDisabled: boolean = false;
+  editFlow: boolean = false;
+  dateFields: FlowTableField[] = [];
+  opt_id: string;
+  version_id:string;
+  
+  stati = [
+    { name: 'Corrette' },
+    { name: 'Mai Inviate' },
+    { name: 'Già Inviate' },
+    { name: 'Tutte' }
+  ];
+
+  constructor(
+    private flowConfigurationService: FlowConfigurationService,
+    private activityManager: ActivityManager,
+    @Inject('SearchActivityComponent') public searchComponent: SearchActivityComponent,
+  ) {
+    super();
+  }
+
+  ngOnInit(): void {
+    this.retrieveFlow();
+    
+    let starterParams: any = this.activity.startingParams;
+
+    if (starterParams && starterParams.editItem) {
+      this.editFlow = true;
+      this.flowExtract = starterParams.editItem;
+      this.flow = this.flowExtract.flow;
+      this.version = this.flowExtract.version;
+      this.versions = this.flow.versions;
+      this.getDataFields(this.flow.id,this.version.id);
+      this.opt_id = this.flow.id;
+      this.version_id = this.version.id;
+      this.editFlow = true;
+      this.flowDisabled = true;
+    }else{
+      this.flowExtract = new FlowExtract();
+    }
+
+    this.activity.addActivityAction({
+      actionType: ActivityActionType.MAIN,
+      name: SearchActivityComponent.NEW_ACTION,
+      icon: "schedule",
+      tooltip: "pianifica",
+      fn: (activity, action) => {
+        return Promise.resolve(null);
+      }
+    });
+  }
+
+//RESTITUISCE CAMPI DATA
+  retriveDateFields(){
+    this.showLoadingIndicator = true;
+    this.flowConfigurationService.getDataFields("flow","version").then(response => {
+        if (response.success) {
+         
+   
+         //TODO RESTITUIRE DATE
+            
+        }
+        else {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        }
+    }).catch(() => {
+        let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+        this.activityManager.engApplication.notifyMessage(errorMessage);
+    });
+
+    return Promise.resolve();
+    
+  }
+
+
+  //RESTITUZIONEFLOW
+  retrieveFlow() {
+    this.showLoadingIndicator = true;
+    this.flowConfigurationService.searchFlowExtr().then(response => {
+      if (response.success) {
+        if (response.opTargetObject.error) {
+          //this.manageError(response.opTargetObject.error);
+        } else {
+                  this.flows = response.opTargetObject.items;
+                  }
+      }
+      else {
+        let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+        this.activityManager.engApplication.notifyMessage(errorMessage);
+      }
+      this.showLoadingIndicator = false;
+    }).catch(() => {
+      this.showLoadingIndicator = false;
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+    });
+
+    return Promise.resolve();
+  }
+
+
+  getDataFields(flow: string, version: string) {
+    this.showLoadingIndicator = true;
+    this.flowConfigurationService.getDataFields(flow,version).then(response => {
+      if (response.success) {
+     
+                  this.dateFields = response.opTargetObject.items;
+                  
+      }
+      else {
+        let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+        this.activityManager.engApplication.notifyMessage(errorMessage);
+      }
+      this.showLoadingIndicator = false;
+    }).catch(() => {
+      this.showLoadingIndicator = false;
+      let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+      this.activityManager.engApplication.notifyMessage(errorMessage);
+    });
+
+    return Promise.resolve();
+  }
+
+ 
+  executeSaveAction(action: ActivityAction): Promise<any> {
+    this.flowExtract.flow = this.flow;
+    this.flowExtract.version= this.version;
+
+    if(this.flowExtract.record===""){
+      this.flowExtract.record = "Tutte";
+    }
+
+    for(let i = 0  ; i < this.flowExtract.dateFields.length; i++){
+    if (this.formGroup.value["date_from" + i] != null) {
+      this.flowExtract.dateFields[i].date_from = this.formGroup.value["date_from" + i];
+    }
+    if (this.formGroup.value["date_to" + i] != null) {
+      this.flowExtract.dateFields[i].date_to = this.formGroup.value["date_to" + i];
+    }
+  }
+
+  
+     this.showLoadingIndicator = true;
+
+
+      this.flowConfigurationService.saveExtraction(this.flowExtract).then(response => {
+        if (response.success) {
+          if (response.opTargetObject.error) {
+            //this.manageError(response.opTargetObject.error);
+          } else {
+            this.activityManager.goBack();
+          }
+        }
+        else {
+          let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+          this.activityManager.engApplication.notifyMessage(errorMessage);
+          this.flowExtract = null;
+        }
+        this.showLoadingIndicator = false;
+      }).catch(() => {
+        this.showLoadingIndicator = false;
+        this.flowExtract = null;
+        let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+        this.activityManager.engApplication.notifyMessage(errorMessage);
+      });
+      this.showLoadingIndicator = false;
+      return Promise.resolve();
+    
+
+  }
+
+
+
+
+  initDataField($event) {
+    this.version = $event;
+    this.getDataFields(this.opt_id,$event.id);
+  
+  }
+
+  removeField(index: number) {
+
+    this.flowExtract.dateFields.splice(index,1);
+    
+    if (this.flowExtract.dateFields.length == 0 || !this.flowExtract.dateFields[index]) {
+      this.disableAdd = false;
+    }
+
+  }
+
+
+
+
+  leftpad(val, resultLength = 2, leftpadChar = '0'): string {
+    return (String(leftpadChar).repeat(resultLength)
+      + String(val)).slice(String(val).length);
+  }
+
+  changeSelected($event, rec: string) {
+    this.flowExtract.record = rec;
+  }
+
+
+
+  initVersion(opt){
+  this.flow = opt;
+  this.versions = opt.versions;
+  this.isDisableVersion = false;
+  }
+
+  addField(){
+    this.disableAdd = true;
+    this.flowExtract.dateFields.push(new FlowImportRequestFieldDateDTO());
+  }
+
+  addDataField(index: number){
+    this.disableAdd = false;
+  }
+
+  
+
+}

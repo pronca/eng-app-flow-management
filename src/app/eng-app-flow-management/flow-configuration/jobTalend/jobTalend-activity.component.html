@@ -1,0 +1,108 @@
+<div class="flow-extract-field">
+
+    <mat-card class="talend-card">
+
+        <mat-form-field  >
+            <mat-label>Flussi</mat-label>
+                <mat-select [disabled]="editFlow" [(ngModel)]="opt_id"  maxlength="100" required="true" >
+                    <mat-option *ngFor="let opt of flows"  [value]=opt.id  (click)= "initVersion(opt)">
+                        {{opt.name}}
+                    </mat-option>
+                </mat-select>
+        </mat-form-field  >
+
+        <mat-form-field  >
+            <mat-label>Versioni</mat-label>
+                <mat-select [disabled]="editFlow || isDisableVersion"  [(ngModel)]="version_id"  maxlength="100" required="true" >
+                    <mat-option *ngFor="let fmversion of versions" [value]=fmversion.id (click)="selecteVersion(fmversion)">
+                        {{fmversion.name}}
+                    </mat-option>
+                </mat-select>
+        </mat-form-field>
+
+    <div>
+        <eng-text-field (change)="change($event, 'name')" fxFlex='50' [style.padding-left]="'2%'" [style.padding-right]="'2%'"
+            required="true" label='NOME JAR' property="name" [readonly]="modAllowed">
+        </eng-text-field>
+
+        <eng-text-field (change)="change($event, 'description')" fxFlex='50' [style.padding-left]="'0.8%'" [style.padding-right]="'3.5%'"
+            required="true" label='AN_DESC' property="description">
+        </eng-text-field>
+    </div>
+    <div>
+        <eng-text-field (change)="change($event, 'className')" fxFlex='50' [style.padding-left]="'2%'" [style.padding-right]="'2%'"
+            required="true" label='CLASSE' property="className" [readonly]="modAllowed">
+        </eng-text-field>
+    
+        <eng-text-field (change)="change($event, 'type')" fxFlex='50' [style.padding-left]="'0.8%'" [style.padding-right]="'3.5%'"
+            required="true" label='TYPE' property="type">
+        </eng-text-field>
+    </div>
+    <div>
+        <eng-text-field (change)="change($event, 'packageJob')" fxFlex='50' [style.padding-left]="'2%'" [style.padding-right]="'2%'" [style.padding-bottom]="'1%'"
+            required="true" label='PACCHETTO' property="packageJob" [readonly]="modAllowed">
+        </eng-text-field>
+
+        <mat-form-field class="xsdCombo" >
+            <mat-label>Validatori XSD</mat-label>
+                <mat-select [(ngModel)]="xsdChoice" maxlength="100" required="true" >
+                    <mat-option *ngFor="let xsd of comboXSD" [value]=xsd (click)= "xsdInput.click()">
+                        {{xsd.TIPOLOGIA_FILE_XML}}
+                    </mat-option>
+                </mat-select>
+        </mat-form-field  >
+        <input hidden type="file" #xsdInput (change)="uploadXsd($event.target, xsdChoice.SEZIONE)">
+        <div class="listDip" *ngFor="let xsdObj of xsdList; index as i ">
+                <mat-icon style="color: #004545; padding-left: 50%;">insert_drive_file</mat-icon>
+            <label class="labelDip">&nbsp;{{xsdObj.xsd.name}}&nbsp;</label>
+        </div>
+        
+    </div>
+    <div style="display: flex;">       
+
+        <div class="listDip">
+            <button style="height:50px !important; width:80px !important;" mat-button (click)="dipInput.click()"><mat-icon style="font-size: 35px;">note_add</mat-icon></button>
+            <label class="labelDip" style="text-align: center;">Dipendenze</label>
+        </div>
+        <input hidden type="file" #dipInput (change)="uploadDipendences($event.target)">
+        <div class="listDip" *ngFor="let dip of dipendences; index as i ">
+            <button class="buttonDip" (click)="deleteDip(i, dip)">
+                <mat-icon style="color: #004545; cursor:pointer" matTooltip="Click to delete">insert_drive_file</mat-icon>
+            </button>
+            <label class="labelDip">&nbsp;{{dip.name}}&nbsp;</label>
+        </div>
+    </div>
+
+    <div style="display: flex;">       
+
+        <div class="listDip">
+            <button style="height:50px !important; width:80px !important;" mat-button (click)="dipInputAN.click()"><mat-icon style="font-size: 35px;">note_add</mat-icon></button>
+            <label class="labelDip" style="text-align: center;">Annullamento</label>
+        </div>
+        <input hidden type="file" #dipInputAN (change)="uploadAnnullamento($event.target)">
+        <div class="listDip" *ngIf="!!fileAnnullamento">
+            <button class="buttonDip" (click)="cancellaAnnullamento()">
+                <mat-icon style="color: #004545; cursor:pointer" matTooltip="Click to delete">insert_drive_file</mat-icon>
+            </button>
+            <label  class="labelDip">&nbsp;{{fileAnnullamento.name}}&nbsp;</label>
+        </div>
+    </div>
+
+    </mat-card>
+    
+</div>
+
+
+<div class="uploadfilecontainer" (click)="fileInput.click()" (drop)="uploadFile($event)" (dragover)="allowDrop($event)">
+        <input hidden type="file" id="jobTalendJarInput" #fileInput (change)="uploadClickFile($event.target.files)">
+        <mat-icon id="orderNo"> cloud_upload</mat-icon>
+        <label id="orderName" > Drag & drop a file here or click</label>
+
+    </div> 
+    
+    <div  class="files-list" *ngFor="let file of files;let i= index">
+        <p> {{ file }} </p>
+        <button class="delete-file" (click)="deleteAttachment(i)">
+                <mat-icon>delete</mat-icon>
+        </button>
+    </div>

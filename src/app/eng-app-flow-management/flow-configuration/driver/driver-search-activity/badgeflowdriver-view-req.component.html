@@ -1,0 +1,37 @@
+<div 
+  fxLayout="row wrap" 
+  fxLayoutAlign="start stretch"
+  class="badge-view-container"
+  >
+
+  <ng-container *ngFor="let item of searchComponent.searchResultItems">
+
+    <div *ngIf="searchComponent.isGroupFirstItem(item)" fxFlex="100">
+      <group-header [group]='searchComponent.getGroupOfItem(item)' 
+              [searchComponent]='searchComponent'>
+      </group-header>
+    </div>    
+
+    <div [fxFlex]="badgeItemFlex" class="list-item">
+
+      <!--
+      <list-badge-item fxFill
+          [item]='item' 
+          [searchComponent]='searchComponent'  
+          [class.selected-item]="searchComponent.isItemSelected(item)"
+          >
+      </list-badge-item>
+        -->
+
+      <dynamic-component 
+        [componentType]="badgeItemComponentType" 
+        [inputs]="getItemComponentInputs(item)"
+        [checkInputChanges]="false"
+        [checkProvidersChanges]="false">
+      </dynamic-component>
+
+    </div>
+
+  </ng-container>
+
+</div>

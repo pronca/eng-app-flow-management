@@ -1,0 +1,1517 @@
+import {Component, Inject} from '@angular/core';
+import { OrderByPipe } from '../flow-view/order-by-pipe';
+import {
+    ActivityActionType,
+    ActivityManager,
+    EditActivityComponent,
+    SearchActivityComponent,
+    SearchFilters
+} from 'eng-app';
+
+import {FlowConfigurationService} from "../flow-configuration.service";
+import {FormGroup} from '@angular/forms';
+import {MatTableDataSource} from '@angular/material';
+import {
+  FilterError,
+  FilterFlow,
+  FilterFlowField,
+  FilterFlowFieldData,
+  FilterValid,
+  FlowTable,
+  FmFlow,
+  FlowTableField, Header, header
+} from "../flow-configuration.model";
+import {animate, state, style, transition, trigger} from '@angular/animations';
+import * as moment_ from 'moment';
+import { ThrowStmt } from '@angular/compiler';
+
+const moment = moment_;
+
+@Component({
+    selector: 'flow-view-activity',
+    templateUrl: './flow-view-activity.component.html',
+    styleUrls: ['./flow-view-activity.component.scss'],
+    animations: [
+      trigger('detailExpand', [
+        state('collapsed', style({height: '0px', minHeight: '0'})),
+        state('expanded', style({height: '*'})),
+        transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
+      ]),
+    ],
+  })
+  
+  export class FlowViewActivityComponent extends EditActivityComponent  {
+    download_= false;
+    header: Header = new Header();
+    isLinear = false;
+    firstFormGroup: FormGroup;
+    flowTableList: FlowTable[] = [];
+    value: any;
+    fmflow: FmFlow;
+    displayedColumns: any[] = [];
+    sezioni: FlowTable[];
+    dataSource: any[] = [];
+    map = new Map<string, Object>();
+    mapErrors: any;
+    totalRecord: number[] = [];
+    filterFlow: FilterFlow = new FilterFlow();
+    version: string;
+    showLoadingIndicator: boolean = true;
+    pkNameList: string[][] = [];
+    totalItems: number;
+    selectedRow: any;
+    selectText: any;
+    fieldApp: string; 
+    selectedValue: any;
+    removable = true;
+    hiddenDate: boolean = false;
+    hiddenValue: boolean = false;
+    validate: boolean = false; 
+    filter: string[] = [];
+    filterValue: string[] = [];
+    filterValid: FilterValid = new FilterValid();
+    dateInTemp: Date = new Date();
+    dateOutTemp: Date = new Date();
+    filterGlob: SearchFilters = new SearchFilters();
+    fkNameList: string[][] = [];
+    selectedSection: number = 0;
+    expandedElement: any = null;
+    filterError: FilterError = new FilterError();
+    displayedColumnsErrors: any[] = [];
+    dataSourceErrors: any;
+    firstResultDisplay: number;
+    firstResultDisplayAcc: number;
+    firstResultDisplayReg: number;
+    blockLeft: boolean = true;
+    blockRight: boolean;
+    blockLeftAcc: boolean = true;
+    blockRightAcc: boolean;
+    blockLeftReg: boolean = true;
+    blockRightReg: boolean;
+    endPage: number;
+    endPageAcc: number; 
+    endPageReg: number;
+    sectionBA: any;
+    sectionBAreg: any;
+    flag: boolean = false;
+    flagReg: boolean = false;
+    countPratiche: number;
+    countError: number;
+    countReturns: number;
+    count: number[] = [];
+    dataApp: any[][] = [];
+    dataAppError: any[] = [];
+    dataAppReturns: any[] = [];
+    firstResultSez: number[] = [];
+    blockRightSez: boolean[] = [];
+    blockLeftSez: boolean[] = [];
+    fieldSys: FlowTableField[] = [];
+    filtered: boolean = false;
+    iToolbar: number = 0;
+    regAcc: boolean = false;
+    showRegAcc: boolean = false;
+    dataSourceReturns: any;
+    displayedColumnsReturns: any[] = [];
+    expandedElementReg: any = null;
+    mapReturns: any;
+    lenghtError: number = 0;
+    lenghtReturns: number = 0;
+    mapFields: Map<string, string> = new Map<string, string>();
+    colMap: header[][] = [];
+    emptyTables: boolean = false;
+    scartiRegione: boolean = false;
+    campiConfig: string[] = [];
+    colonneAggiunte: boolean = false;
+    colonneAggiunteGrid: boolean = false;
+    // valoriConfig: string[] = [];
+
+    constructor(
+        private flowConfigurationService: FlowConfigurationService,
+        private activityManager: ActivityManager,
+        @Inject('SearchActivityComponent') public searchComponent: SearchActivityComponent,
+    ){
+        super();
+    }
+
+    ngOnInit(): void {
+      
+      this.activity.markDirty = () => { }
+
+        let starterParams: any = this.activity.startingParams;
+
+        if(starterParams.editItem.extra && !starterParams.extra){
+          this.filterFlow.importId = starterParams.editItem.extra;
+        }
+        if(starterParams.drg){
+          this.filterFlow.drg = "DRG";
+        }
+        
+        this.fmflow = starterParams.editItem;
+        
+        if(this.fmflow.code.endsWith("_REG")){
+          this.regAcc = true;
+        }
+        this.filterFlow.firstResult = 0;
+        this.firstResultDisplay = this.filterFlow.firstResult + 1;
+        this.filterFlow.maxResult = 10;
+        this.endPage = this.filterFlow.maxResult;
+        this.getVersionName();
+        this.filterFlow.field = new Array<FilterFlowField>();
+        this.filterFlow.fieldData = new Array<FilterFlowFieldData>();
+        // this.filterFlow.param = new Array();
+        // this.filterFlow.dateIn = new Array();
+        // this.filterFlow.dateOut = new Array();
+        this.filterFlow.fkFields = new Array();
+        this.filterFlow.fkValues = new Array();
+        if(starterParams.extra){
+          this.searchFromPatient(starterParams.extra);
+        }else{
+          this.ricercaConf();
+        }
+        this.sezioni = this.fmflow.flowTableList;
+        this.ordinaSezioni(this.sezioni);
+        
+        this.activity.addActivityAction({
+          actionType: ActivityActionType.MAIN,
+          name: SearchActivityComponent.NEW_ACTION,
+          tooltip: "Valida Record",
+          icon: "spellcheck",
+          isShow: (activity, activityAction) => !this.emptyTables,
+          fn: (activity, action) => {
+              this.validaRecord();
+          return Promise.resolve(null);                   
+          }
+        });
+
+        this.activity.addActivityAction({
+            actionType: ActivityActionType.MAIN,
+            name: SearchActivityComponent.EDIT_ITEM_ACTION,
+            tooltip: "Downloads XLSX",
+            icon: "get_app",
+            isShow: (activity, activityAction) => !this.emptyTables,
+            fn: (activity, action) => {
+                if(!this.download_){
+                    this.exportFileXLSX(this.filterFlow);
+                    return Promise.resolve(null);
+                }
+                else{
+                    this.activityManager.engApplication.notifyMessage('Download File XLS in corso, attendere il completamento');
+                    return Promise.resolve(null);
+                }
+
+            }
+        });
+
+        let sys: FlowTableField = new FlowTableField();
+        sys.name = "DATE_PROCESSING";
+        sys.fieldType = "Date";
+        sys.descriptionsm = "Data Ricezione";
+        this.fieldSys.push(sys);
+        sys = new FlowTableField();
+        sys.name = "STATUS_GROUP";
+        sys.fieldType = "String";
+        sys.descriptionsm = "Stato Validazione Pratica";
+        this.fieldSys.push(sys);
+        sys = new FlowTableField();
+        sys.name = "STATE_RECEVIED_APP";
+        sys.fieldType = "String";
+        sys.descriptionsm = "Stato Invio Da Verticale";
+        this.fieldSys.push(sys);
+        sys = new FlowTableField();
+        sys.name = "STATE_SEND_REGION";
+        sys.descriptionsm = "Stato Invio A Regione";
+        sys.fieldType = "String";
+        this.fieldSys.push(sys);
+        sys = new FlowTableField();
+        sys.name = "STATUS_REGION";
+        sys.descriptionsm = "Stato Validazione Pratica Regionale";
+        sys.fieldType = "String";
+        this.fieldSys.push(sys);
+        sys = new FlowTableField();
+        sys.name = "STATUS";
+        sys.descriptionsm = "Stato Validazione Record";
+        sys.fieldType = "String";
+        this.fieldSys.push(sys);
+        
+      }
+    
+    protected initFormGroup(): void {
+        this.fmflow = new FmFlow();
+    
+      }
+
+      initActivityActions() {
+        super.initActivityActions();
+        this.activity.removeActivityAction(EditActivityComponent.SAVE_ACTION);
+      }
+
+    ricercaConf(): Promise<any> {
+
+      this.showLoadingIndicator = true;
+      this.flag = false;
+      this.filterFlow.flow = this.fmflow;
+      this.filterFlow.flow.flowTableList.forEach(fieldList => fieldList.flowTableFieldList.sort((a,b) => a. position - b.position));
+      this.filterFlow.paginated = true;
+      this.filterError.firstResultAcc = 0;
+      this.firstResultDisplayAcc = this.filterError.firstResultAcc + 1;
+      this.firstResultDisplayReg = this.filterError.firstResultAcc + 1;
+      if(this.filterFlow.firstResult<=1){
+        this.blockLeft = true;
+      }else{
+        this.blockLeft = false;
+      }
+      this.blockRight = false;
+      if(this.countPratiche){
+        if(this.endPage>=this.countPratiche){
+          this.blockRight = true;
+        }else{
+          this.blockRight = false;
+        }
+      }
+
+      if(!this.activity.startingParams.extra && this.filterFlow.field.length>0 || this.filterFlow.fieldData.length>0){
+        let bool: boolean = true;
+        this.contaPratiche(bool);
+      }else{
+
+        this.flowConfigurationService.searchFlowView(this.filterFlow).then(result => {
+            if (result.success) {
+              this.fkNameList.length = 0;
+              this.pkNameList.length = 0;
+               this.map = result.opTargetObject[0];
+               let m = this.fmflow.flowTableList[0].name;
+               let lenght = this.map[m].length;
+               if(lenght== 0){
+                  this.emptyTables = true;
+                  this.blockRight = true;
+                  for(let i = 0; i < this.sezioni.length; i++){
+                    this.firstResultSez[i] = 0;
+                    this.count[i] = 0;
+                    this.blockLeftSez[i] = true;
+                    this.blockRightSez[i] = true;
+                    this.mapFields[i] = result.opTargetObject[1][this.sezioni[i].name];
+                    this.generaColonne(i);
+                  }
+                  this.colonneAggiunteGrid=true;
+                  this.firstResultDisplay = 0;
+                  this.endPage = 0;
+                  this.dataSource = [];
+                  this.showLoadingIndicator = false;
+                  this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+                 return;
+               }
+               else if(lenght<10){
+                  this.blockRight = true;
+               }
+               for(let i = 0; i < this.sezioni.length; i++){
+                  this.mapFields[i] = result.opTargetObject[1][this.sezioni[i].name];
+                  this.generaColonne(i);
+                  this.dataSource[i] = new MatTableDataSource<any>(this.generateDatasource(i));
+                }
+                this.colonneAggiunteGrid=true;
+                this.selectText = undefined;
+                this.selectedValue = undefined;
+                this.dateInTemp = undefined;
+                this.dateOutTemp = undefined;
+            } else {
+                this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento delle colonne');
+            }
+            this.showLoadingIndicator = false;
+          }).catch(() => {
+          this.showLoadingIndicator = false;
+          this.activityManager.engApplication.notifyMessage('Errore inaspettato');
+        });
+      }
+        return Promise.resolve();
+    }
+
+    generaColonne(i: number){
+      if (!this.colonneAggiunteGrid) {
+        this.colMap[i] = [];
+        this.displayedColumns[i] = [];
+        this.displayedColumns[i].push('FILTER');
+        this.displayedColumns[i].push('ERRORS');
+        if(this.regAcc){
+          this.displayedColumns[i].push('REG');
+        }
+  
+        let mapField = this.mapFields[i];
+        let cols = Object.keys(mapField);
+        for(let j=0; j<cols.length; j++){
+          let colHeader = new header();
+          colHeader.name = cols[j];
+          colHeader.description = mapField[cols[j]];
+          this.colMap[i].push(colHeader);
+          this.displayedColumns[i].push(colHeader.name);
+        }
+  
+        if(i==0){
+          let colHeader4 = new header();
+          colHeader4.name = "DATE_PROCESSING";
+          colHeader4.description = "Data Ricezione";
+          this.colMap[i].push(colHeader4);
+          this.displayedColumns[i].push(colHeader4.name);
+          let colHeader5 = new header();
+          colHeader5.name = "STATUS_GROUP";
+          colHeader5.description = "Stato Validazione Pratica";
+          this.colMap[i].push(colHeader5);
+          this.displayedColumns[i].push(colHeader5.name);
+          let colHeader6 = new header();
+          colHeader6.name = "STATE_RECEVIED_APP";
+          colHeader6.description = "Stato Invio Da Verticale";
+          this.colMap[i].push(colHeader6);
+          this.displayedColumns[i].push(colHeader6.name);
+          let colHeader7 = new header();
+          colHeader7.name = "STATE_SEND_REGION";
+          colHeader7.description = "Stato Invio A Regione";
+          this.colMap[i].push(colHeader7);
+          this.displayedColumns[i].push(colHeader7.name);
+          let colHeader9 = new header();
+          colHeader9.name = "STATUS_REGION";
+          colHeader9.description = "Stato Validazione Pratica Regionale";
+          this.colMap[i].push(colHeader9);
+          this.displayedColumns[i].push(colHeader9.name);
+        }
+        let colHeader8 = new header();
+        colHeader8.name = "STATUS";
+        colHeader8.description = "Stato Validazione Record";
+        this.colMap[i].push(colHeader8);
+        this.displayedColumns[i].push(colHeader8.name);
+        
+        let m = this.fmflow.flowTableList[i].flowTableFieldList.length;
+        if(i == 0){
+          this.fkNameList[i] = [];
+          for (let n = 0; n < m; n++){
+            for(let z = 0;z <this.fmflow.flowTableList.length; z++){
+                if(this.fmflow.flowTableList[i].flowTableFieldList[n].pk){
+                  this.fkNameList[i].push(this.fmflow.flowTableList[i].flowTableFieldList[n].name);
+                }
+            }
+          }
+          var unique = this.fkNameList[i].filter(function(elem, index, self) {
+            return index === self.indexOf(elem);
+          })
+          this.fkNameList[i] = unique;
+          }else{
+            this.fkNameList[i] = [];
+            for (let n = 0; n < m; n++){
+              for (let h = 0; h < this.fmflow.flowTableList[i].listFk.length; h++){
+                if(this.fmflow.flowTableList[i].flowTableFieldList[n].id == this.fmflow.flowTableList[i].listFk[h].idFieldTable){
+                  this.fkNameList[i].push(this.fmflow.flowTableList[i].flowTableFieldList[n].name);
+                }
+              } 
+            }
+          }
+          this.pkNameList[i] = [];
+          for (let n = 0; n < m; n++){
+            if(this.fmflow.flowTableList[i].flowTableFieldList[n].pk == true){
+              this.pkNameList[i].push(this.fmflow.flowTableList[i].flowTableFieldList[n].name);
+            }
+          }
+      }
+    }
+
+    generateDatasource(i: number):Array<any>{
+
+        let data = new Array();
+        let h = 0;
+        if(i==0){
+          h = this.fmflow.flowTableList[i].flowTableFieldList.length+6;
+        }else{
+          h = this.fmflow.flowTableList[i].flowTableFieldList.length+1;
+        }
+        let campiTecnici = 0;
+        if(this.regAcc == true){
+          campiTecnici = 3;
+        }else{
+          campiTecnici = 2;
+        }
+        let m = this.fmflow.flowTableList[i].name;
+        let lenght = this.map[m].length;
+        this.totalRecord[i] = lenght;
+        let columnValue = null;
+          for(let z = 0; z < lenght; z++){
+            data[z] = {};
+            for (let j = 0; j < h; j++) {
+              if(h == 1){
+                columnValue = this.map[m][j];
+              }else{
+               columnValue = this.map[m][z][j];
+              }
+              let columnName = this.displayedColumns[i][j+campiTecnici];
+              if(this.isDate(columnValue)){
+                columnValue = this.dateConvert(columnValue);
+              }
+              data[z][columnName] = columnValue;
+            }
+          }
+          if(i>0){
+            this.blockLeftSez[i] = true;
+            this.firstResultSez[i] = 1;
+            if(data.length<=10){
+              this.count[i] = data.length;
+              this.blockRightSez[i] = true;
+            }else{
+              this.blockRightSez[i] = false;
+              this.count[i] = 10;
+              this.dataApp[i] = new Array();
+              this.dataApp[i] = data;
+              data = data.slice(0,10);
+            }
+          }
+          else{
+            if(data.length == 0){
+              this.endPage  = 0;
+
+            }else{
+              this.endPage = data.length + this.filterFlow.firstResult;
+              this.firstResultDisplay = this.filterFlow.firstResult + 1;
+            }
+          }
+          
+      return data;
+  }
+
+  getVersionName(): void{
+
+    this.flowConfigurationService.getVersionNameById(this.fmflow)
+    .then(result => {
+        if (result.success) {
+           this.version = result.opTargetObject;
+           this.activity.title = "!i18n#" + this.fmflow.name + " " + this.version;
+        } else {
+            this.activityManager.engApplication.notifyMessage('Errore in fase di ricezione della versione');
+        }
+    })
+    .catch(e => {
+      this.activityManager.engApplication.notifyMessage('Errore in fase di ricezione della versione');
+    }
+    ); 
+  }
+
+  changeStep($event){
+    let evento = $event;
+    this.iToolbar = evento;
+
+    this.selectedSection = evento.selectedIndex;
+
+    if (this.validate = true) {
+      this.activity.removeActivityAction(SearchActivityComponent.NEW_ACTION);
+      this.validate = false;
+    }
+
+    if (evento.selectedIndex == 0) {
+      if(!this.emptyTables){
+        this.firstResultDisplay = this.filterFlow.firstResult + 1;
+        this.blockRight = false;
+        if(this.firstResultDisplay > 1){
+          this.blockLeft = false;
+        }else{
+          this.blockLeft = true;
+        }
+      }
+
+      this.activity.addActivityAction({
+        actionType: ActivityActionType.MAIN,
+        name: SearchActivityComponent.NEW_ACTION,
+        tooltip: "Valida Record",
+        icon: "spellcheck",
+        fn: (activity, action) => {
+            this.validaRecord();
+        return Promise.resolve(null);                   
+        }
+      });
+
+        this.validate = true;
+
+    }
+  }
+
+  isDate(value) {
+    return value instanceof Date;
+  }
+
+  dateConvert(date): string {
+    return this.leftpad(date.getDate())
+              + '/' + this.leftpad(date.getMonth() + 1, 2)
+              + '/' + this.leftpad(date.getFullYear(), 4)
+              ;
+  }
+
+  dateHConvert(data): string {
+    if (data != null) {
+        let myMoment = moment(data);
+        return myMoment.format('D/MM/YYYY HH:mm:ss');
+    } else
+        return "";
+  }
+  
+  leftpad(val, resultLength = 2, leftpadChar = '0'): string {
+    return (String(leftpadChar).repeat(resultLength)
+          + String(val)).slice(String(val).length);
+  }
+
+  getServerDataLeft(i: number){
+    if(this.filterFlow.firstResult>0 && this.selectedSection == 0){
+      this.filterFlow.firstResult = this.filterFlow.firstResult - 10;
+      this.endPage = this.filterFlow.firstResult + 10;
+      this.firstResultDisplay = this.filterFlow.firstResult + 1;
+      this.ricercaConf();
+    }else if(this.selectedSection >0){
+      if(!this.blockLeftSez[i]){
+        this.blockRightSez[i] = false;
+        this.firstResultSez[i]=this.firstResultSez[i]-10;
+        this.count[i] = this.firstResultSez[i]+9;
+        this.dataSource[i] = new MatTableDataSource<any>(this.dataApp[i].slice(this.firstResultSez[i], this.count[i]));
+        if( this.firstResultSez[i]<=1){
+          this.blockLeftSez[i] = true;
+        }
+      }
+    }
+  }
+
+  getServerDataRight(i:number){
+      if(this.selectedSection >0){
+        if(!this.blockRightSez[i]){
+          this.blockLeftSez[i] = false;
+          this.firstResultSez[i]=this.count[i]+1;
+          if(this.count[i]+10 < this.dataApp[i].length){
+            this.count[i] = this.firstResultSez[i] + 9;
+            this.blockRightSez[i] = false;
+          }else{
+            this.count[i] = this.dataApp[i].length;
+            this.blockRightSez[i] = true;
+          }
+          this.dataSource[i] = new MatTableDataSource<any>(this.dataApp[i].slice(this.firstResultSez[i]-1, this.count[i]));
+        }
+      }else{
+        if(!this.blockRight){
+          this.filterFlow.firstResult = this.filterFlow.firstResult + 10;
+          this.ricercaConf();
+        }
+      }
+  }
+
+  getServerDataLeftAcc($event, section: any, index: number){
+    if(!this.blockLeftAcc){
+      this.blockRightAcc = false;
+      this.firstResultDisplayAcc=this.firstResultDisplayAcc-5;
+      this.countError = this.firstResultDisplayAcc+4;
+      this.dataSourceErrors = new MatTableDataSource<any>(this.dataAppError.slice(this.firstResultDisplayAcc -1, this.countError));
+      if( this.firstResultDisplayAcc<=1){
+        this.blockLeftAcc = true;
+      }
+    }
+  }
+
+  getServerDataRightAcc($event, section: any, index: number){
+    if(!this.blockRightAcc){
+      this.flag = true;
+      this.blockLeftAcc = false;
+      this.firstResultDisplayAcc = this.countError + 1
+      if(this.firstResultDisplayAcc + 4 <= this.dataAppError.length){
+        this.countError = this.firstResultDisplayAcc + 4;
+        this.blockRightAcc = false;
+      }else{
+        this.countError = this.dataAppError.length;
+        this.blockRightAcc = true;
+      }
+        this.dataSourceErrors = new MatTableDataSource<any>(this.dataAppError.slice(this.firstResultDisplayAcc -1, this.countError));
+    }
+  }
+
+  getServerDataLeftReg($event, section: any, index: number){
+    if(!this.blockLeftReg){
+      this.blockRightReg = false;
+      this.firstResultDisplayReg=this.firstResultDisplayReg-5;
+      this.countReturns = this.firstResultDisplayReg+4;
+      this.dataSourceReturns = new MatTableDataSource<any>(this.dataAppReturns.slice(this.firstResultDisplayReg -1, this.countReturns));
+      if( this.firstResultDisplayReg<=1){
+        this.blockLeftReg = true;
+      }
+    }
+  }
+
+  getServerDataRightReg($event, section: any, index: number){
+    if(!this.blockRightReg){
+      this.flagReg = true;
+      this.blockLeftReg = false;
+      this.firstResultDisplayReg = this.countReturns + 1;
+      if(this.firstResultDisplayReg + 4 <= this.dataAppReturns.length){
+        this.countReturns = this.firstResultDisplayReg + 4;
+        this.blockRightReg = false;
+      }else{
+        this.countReturns = this.dataAppReturns.length;
+        this.blockRightReg = true;
+      }
+        this.dataSourceReturns = new MatTableDataSource<any>(this.dataAppReturns.slice(this.firstResultDisplayReg -1, this.countReturns));
+    }
+  }
+
+ordinaSezioni(temp: FlowTable[]){
+  for(let i = 0; i < temp.length-1; i++) {
+    let minimo = i;
+    for(let j = i+1; j < temp.length; j++) {
+            if(temp[minimo].section>temp[j].section) {
+                minimo = j;
+            }
+    }
+    if(minimo!=i) { 
+        let k = temp[minimo];
+        temp[minimo]= temp[i];
+        temp[i] = k;
+    }
+  }
+}
+
+section($event, section: any, index: number) {
+  if(!this.filtered){
+    this.countPratiche = undefined;
+    this.filtered = true;
+    this.filterFlow.firstResult = 0;
+    this.filterFlow.maxResult = 10;
+    this.firstResultDisplay = this.filterFlow.firstResult + 1;
+    this.endPage = this.filterFlow.maxResult;
+      this.activity.startingParams.extra = section;
+      let colonne = Object.keys(section);
+      for(let i = 0; i < colonne.length; i++){
+        for(let j = 0; j < this.fkNameList[index].length; j++){
+          if(colonne[i] === this.fkNameList[index][j]){
+            this.filterFlow.fkFields.push(this.fkNameList[index][j]);
+            this.filterFlow.fkValues.push((section[this.fkNameList[index][j]]).toUpperCase());
+            // this.filterFlow.param.push((section[this.fkNameList[index][j]]).toUpperCase());
+            let filterFlowField: FilterFlowField = new FilterFlowField();
+            filterFlowField.name = this.fkNameList[index][j];
+            filterFlowField.section = String(index);
+            filterFlowField.param = (section[this.fkNameList[index][j]]).toUpperCase();
+            this.filterFlow.field.push(filterFlowField);
+          }
+        }
+      }
+      this.ricercaConf();
+  }else{
+    this.resetSearch();
+  }
+}
+
+startSearch($event, i) {
+  let allow: boolean = true;
+  this.countPratiche = undefined;
+    if(!this.hiddenDate){
+      if(this.filterFlow.field.length > 0) {
+        let success: boolean = false;
+        let index: number = 0;
+
+        while(success != true && index < this.filterFlow.field.length) {
+          if(this.filterFlow.field[index].name === this.fieldApp) {
+            this.filterFlow.field[index].name = this.fieldApp;
+            this.filterFlow.field[index].section = i;
+            if(this.selectText) {
+              this.filterFlow.field[index].param = this.selectText;
+            } else {
+              this.filterFlow.field[index].param = "NULL";
+            }
+            success = true;
+          }
+          index ++;
+        }
+
+        if(success != true){
+          let filterFlowField: FilterFlowField = new FilterFlowField();
+          if(this.selectText){
+            filterFlowField.param = this.selectText;
+          }else{
+            filterFlowField.param = "NULL";
+          }
+          filterFlowField.name = this.fieldApp;
+          filterFlowField.section = i;
+          if(filterFlowField.name) {
+            this.filterFlow.field.push(filterFlowField);
+          }
+        }
+      } else { 
+        let filterFlowField: FilterFlowField = new FilterFlowField();
+        filterFlowField.name = this.fieldApp;
+        filterFlowField.section = i;
+        if(this.selectText){
+          filterFlowField.param = this.selectText;  
+        } else {
+          filterFlowField.param = "NULL";
+        }
+        if(filterFlowField.name) {
+          this.filterFlow.field.push(filterFlowField);
+        }
+      }
+    } else {
+      if(this.filterFlow.fieldData.length > 0){
+        let successD: boolean = false;
+        let indexD: number = 0;
+        while(successD != true && indexD < this.filterFlow.fieldData.length){
+          if(this.filterFlow.fieldData[indexD].name === this.fieldApp){
+            if(this.dateInTemp || this.dateOutTemp){
+              if(this.dateInTemp && this.dateOutTemp){
+                if(this.dateInTemp > this.dateOutTemp){
+                  allow = false;
+                }else{
+                  this.filterFlow.fieldData[indexD].dateIn = this.dateInTemp;
+                  this.filterFlow.fieldData[indexD].dateOut = this.dateOutTemp;
+                  this.filterFlow.fieldData[indexD].position = 2;
+                  this.filterFlow.fieldData[indexD].name = this.fieldApp;
+                  this.filterFlow.fieldData[indexD].section = i;
+                  successD = true;
+                }
+              }
+              if(this.dateInTemp){
+                if(this.filterFlow.fieldData[indexD].position == 0 || this.filterFlow.fieldData[indexD].position == 3){
+                  this.filterFlow.fieldData[indexD].position = 0;
+                }
+                else if(this.filterFlow.fieldData[indexD].position == 2 || this.filterFlow.fieldData[indexD].position == 1){
+                  this.filterFlow.fieldData[indexD].position = 2;
+                }else if (this.filterFlow.fieldData[indexD].position == 3){
+
+                }
+                this.filterFlow.fieldData[indexD].dateIn = this.dateInTemp;
+                this.filterFlow.fieldData[indexD].name = this.fieldApp;
+                this.filterFlow.fieldData[indexD].section = i;
+                successD = true;
+              }
+              if(this.dateOutTemp){
+                if(this.filterFlow.fieldData[indexD].position == 1){
+                  this.filterFlow.fieldData[indexD].position = 1;
+                  this.filterFlow.fieldData[indexD].dateOut = this.dateOutTemp;
+                  this.filterFlow.fieldData[indexD].name = this.fieldApp;
+                  this.filterFlow.fieldData[indexD].section = i;
+                }
+                else if(this.filterFlow.fieldData[indexD].position == 2 || this.filterFlow.fieldData[indexD].position == 0){
+                  this.filterFlow.fieldData[indexD].position = 2;
+                  this.filterFlow.fieldData[indexD].dateOut = this.dateOutTemp;
+                  this.filterFlow.fieldData[indexD].name = this.fieldApp;
+                  this.filterFlow.fieldData[indexD].section = i;
+                }else if (this.filterFlow.fieldData[indexD].position == 3){
+                  this.filterFlow.fieldData[indexD].dateIn = undefined;
+                  this.filterFlow.fieldData[indexD].position = 1;
+                  this.filterFlow.fieldData[indexD].dateOut = this.dateOutTemp;
+                }
+                successD = true
+              }
+              if(!this.dateInTemp && !this.dateOutTemp){
+                if(this.filterFlow.fieldData[indexD].position == 1 || this.filterFlow.fieldData[indexD].position == 2){
+                  this.filterFlow.fieldData[indexD].dateOut = undefined;
+                }
+                this.filterFlow.fieldData[indexD].position = 3;
+                this.filterFlow.fieldData[indexD].dateIn = new Date();
+                this.filterFlow.fieldData[indexD].name = this.fieldApp;
+                this.filterFlow.fieldData[indexD].section = i;
+                successD = true
+              }
+            }else{
+              if(this.filterFlow.fieldData[indexD].position == 1 || this.filterFlow.fieldData[indexD].position == 2){
+                this.filterFlow.fieldData[indexD].dateOut = undefined;
+              }
+              this.filterFlow.fieldData[indexD].position = 3;
+              this.filterFlow.fieldData[indexD].dateIn = new Date();
+              this.filterFlow.fieldData[indexD].name = this.fieldApp;
+              this.filterFlow.fieldData[indexD].section = i;
+              successD = true
+            }
+          }
+          indexD ++;
+        }
+        if(successD != true){
+          let filterFlowFieldData: FilterFlowFieldData = new FilterFlowFieldData();
+          filterFlowFieldData.name = this.fieldApp;
+          filterFlowFieldData.section = i;
+          if(this.dateInTemp && this.dateOutTemp){
+            if(this.dateInTemp > this.dateOutTemp){
+              allow = false;
+            }else{
+              filterFlowFieldData.dateIn = this.dateInTemp;
+              filterFlowFieldData.dateOut = this.dateOutTemp;
+              filterFlowFieldData.position = 2;
+            }
+          }
+          else if(this.dateInTemp){
+              filterFlowFieldData.dateIn = this.dateInTemp;
+              filterFlowFieldData.position = 0;
+          }
+          else if(this.dateOutTemp){
+              filterFlowFieldData.dateOut = this.dateOutTemp;
+              filterFlowFieldData.position = 1;
+          }else{
+            filterFlowFieldData.dateIn = new Date();
+            filterFlowFieldData.position = 3;
+          } 
+          if(allow && filterFlowFieldData.name){
+            this.filterFlow.fieldData.push(filterFlowFieldData);
+          }
+        } 
+      }else{
+        let filterFlowFieldData: FilterFlowFieldData = new FilterFlowFieldData();
+        filterFlowFieldData.name = this.fieldApp;
+        filterFlowFieldData.section = i;
+        if(this.dateInTemp && this.dateOutTemp){
+          if(this.dateInTemp > this.dateOutTemp){
+            allow = false;
+          }else{
+            filterFlowFieldData.dateIn = this.dateInTemp;
+            filterFlowFieldData.dateOut = this.dateOutTemp;
+            filterFlowFieldData.position = 2;
+          }
+        }
+        else if(this.dateInTemp){
+          filterFlowFieldData.dateIn = this.dateInTemp;
+          filterFlowFieldData.position = 0;
+        }
+        else if(this.dateOutTemp){
+          filterFlowFieldData.dateOut = this.dateOutTemp;
+          filterFlowFieldData.position = 1;
+        }
+        else{
+          filterFlowFieldData.dateIn = new Date();
+          filterFlowFieldData.position = 3;
+        }  
+        if(allow && filterFlowFieldData.name){
+          this.filterFlow.fieldData.push(filterFlowFieldData);
+        }
+      } 
+    }
+
+    this.filterFlow.scartiRegione = this.scartiRegione;
+
+    if(allow){
+      this.filterFlow.firstResult = 0;
+      this.filterFlow.maxResult = 10;
+      this.firstResultDisplay = this.filterFlow.firstResult + 1;
+      this.endPage = this.filterFlow.maxResult;
+      this.ricercaConf();
+    }else{
+      this.activityManager.engApplication.notifyMessage('La data di inizio periodo deve essere minore o uguale alla data di fine periodo');
+    }
+}
+
+ refreshCombo($event, index) {
+   if($event.value.fieldType == "Date"){
+     this.hiddenDate = true;
+     this.hiddenValue = true;
+   }else{
+    this.hiddenDate = false;
+    this.hiddenValue = false;
+   }
+  let fieldN = $event.value.name;
+  this.fieldApp = fieldN;
+}
+
+remove(field: string, index : number): void {
+  this.countPratiche = undefined;
+  // this.filterFlow.param.splice(index,1);
+  this.filterFlow.field.splice(index,1);
+  this.ricercaConf();
+}
+
+// removeDate(date: Date, index: number): void {
+//   this.countPratiche = undefined;
+//   this.filterFlow.fieldData.splice(index,1);
+//   this.ricercaConf();
+// }
+
+removeDateIn(date: Date, index: number): void {
+  this.countPratiche = undefined;
+  // this.filterFlow.dateIn.splice(index,1);
+  if(this.filterFlow.fieldData[index].position == 0){
+    this.filterFlow.fieldData.splice(index,1);
+  }else if (this.filterFlow.fieldData[index].position == 2){
+    this.filterFlow.fieldData[index].position = 1;
+    this.filterFlow.fieldData[index].dateIn = undefined;
+  }else if (this.filterFlow.fieldData[index].position == 3){
+    this.filterFlow.fieldData.splice(index,1);
+  }
+  this.ricercaConf();
+}
+
+removeDateOut(date: Date, index: number): void {
+  this.countPratiche = undefined;
+  // this.filterFlow.dateOut.splice(index,1);
+  if(this.filterFlow.fieldData[index].position == 1){
+    this.filterFlow.fieldData.splice(index,1);
+  }else if (this.filterFlow.fieldData[index].position == 2){
+    this.filterFlow.fieldData[index].position = 0;
+    this.filterFlow.fieldData[index].dateOut = undefined;
+  }
+  this.ricercaConf();
+}
+
+changeDateIn($event,index) {
+  if ($event && $event.isTrusted) { return }
+  if(index != this.selectedSection) { return }
+  let dateIn = $event;
+  this.dateInTemp = dateIn;
+}
+
+changeDateOut($event,index) {
+  if ($event && $event.isTrusted) { return }
+  if(index != this.selectedSection) { return }
+  let dateOut = $event;
+  this.dateOutTemp = dateOut
+}
+
+validaRecord(){
+
+  if(this.showLoadingIndicator) {
+    this.activityManager.engApplication.notifyMessage('Validazione in corso...');
+    return;
+  }
+
+  if(this.filterFlow.fkFields.length > 0 && this.filterFlow.fkValues.length > 0){
+    this.showLoadingIndicator = true;
+    let list: string[][] = [];
+    this.filterValid.field = [];
+    for(let i = 0; i < this.filterFlow.fkValues.length; i++){
+      let field : FilterFlowField = new FilterFlowField();
+      field.name = this.filterFlow.fkFields[i];
+      field.section = '0';
+      field.param = this.filterFlow.fkValues[i];
+      // this.filterValid.param[i] = this.filterFlow.fkValues[i];
+      this.filterValid.field[i] = field;
+
+      list[i] = [];
+      list[i][0] = this.filter[i];
+      list[i][1] = this.filterValue[i];
+    }
+    this.filterValid.flowId = this.filterFlow.flow.id;
+    this.filterValid.versionId = this.filterFlow.flow.version;
+    this.filterValid.importId = this.filterFlow.importId;
+
+    this.flowConfigurationService.validateRecord(this.filterValid)
+    .then(result => {
+        this.showLoadingIndicator = false;
+
+        if(result.opTargetObject) result = result.opTargetObject;
+
+        if (result.success) {
+          this.activityManager.engApplication.notifyMessage('Validazione effettuata con successo');
+          this.ricercaConf();
+        } else {
+            // this.activityManager.engApplication.notifyMessage(result.messages[0]);
+        }
+    })
+    .catch(e => {
+      this.showLoadingIndicator = false;
+      this.activityManager.engApplication.notifyMessage('Errore in fase di validazione');
+    }
+    ); 
+  }else{
+    this.activityManager.engApplication.notifyMessage('Selezionare record da validare');
+  }
+  
+}
+
+resetSearch(){
+  this.fieldApp = null;
+  this.countPratiche = undefined;
+  this.filtered = false;
+  this.filterFlow.firstResult = 0;
+  this.filterFlow.maxResult = 10;
+  this.endPage = this.filterFlow.maxResult;
+  this.firstResultDisplay = this.filterFlow.firstResult +1;
+  this.filterFlow.field.splice(0, this.filterFlow.field.length);
+  // this.filterFlow.param.splice(0, this.filterFlow.param.length);
+  this.filterFlow.fieldData.splice(0, this.filterFlow.fieldData.length);
+  // this.filterFlow.dateIn.splice(0, this.filterFlow.dateIn.length);
+  // this.filterFlow.dateOut.splice(0, this.filterFlow.dateOut.length);
+  if(this.filterFlow.fkFields && this.filterFlow.fkValues){
+    this.filterFlow.fkFields.splice(0, this.filterFlow.fkFields.length);
+    this.filterFlow.fkValues.splice(0, this.filterFlow.fkValues.length);
+  }
+  this.ricercaConf();
+}
+
+getErrors($event, section: any, index: number) {
+  if(this.expandedElement){
+    this.filterError.accordionPag = true;
+    this.firstResultDisplayAcc = 1;
+    if(this.sectionBA==undefined || section!=this.sectionBA){
+      this.sectionBA=section;
+      this.flag = false;
+      this.filterError.firstResultAcc = 0;
+      this.firstResultDisplayAcc = this.filterError.firstResultAcc + 1;
+      this.blockLeftAcc = true;
+      this.endPageAcc = 5;
+      this.blockRightAcc = true;
+    }else if(this.sectionBA!=undefined || section==this.sectionBA){
+      if(this.filterError.firstResultAcc<=1){
+        this.blockLeftAcc = true;
+      }else{
+        this.blockLeftAcc = false;
+      }
+        this.endPageAcc = 5;
+        this.blockRightAcc = true;
+    }
+
+    this.filterError.view = true;
+    this.filterError.flow = this.fmflow;
+    this.filterError.index = index;
+    this.filterError.pkList = [];
+    for(let i = 0; i < this.pkNameList[index].length; i++){
+    this.filterError.pkList.push(section[this.pkNameList[index][i]]);
+    }
+
+    this.flowConfigurationService.getErrors(this.filterError)
+      .then(result => {
+          if (result.success) {
+            this.mapErrors = result.opTargetObject.objectList;
+            this.lenghtError = this.mapErrors.length;
+               if(this.lenghtError== 0){
+                  this.showLoadingIndicator = false;
+                  this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+                  this.blockRightAcc = true;
+                  this.firstResultDisplayAcc = 0;
+                  this.countError = 0;
+                  this.displayedColumnsErrors = this.generaColonneErrors();
+                  this.dataSourceErrors = null;
+                }else{
+                  this.displayedColumnsErrors = this.generaColonneErrors();
+                  this.dataSourceErrors = new MatTableDataSource<any>(this.generateDatasourceErrors());
+                }
+          } else {
+              this.activityManager.engApplication.notifyMessage('Errore in fase di ricezione degli errori');
+          }
+      })
+      .catch(e => {
+        this.activityManager.engApplication.notifyMessage('Errore in fase di ricezione degli errori');
+      }
+    );
+  }
+}
+
+generaColonneErrors(): string[] {
+  let colonne: string[] = []
+  colonne.push("ERRORE", "DESCRIZIONE","CAMPO ERRATO", "VALORE ERRATO","DATA DI VALIDAZIONE","GRAVITA");
+  return (colonne);
+}
+
+generateDatasourceErrors():Array<any>{
+  let data = new Array();
+  let columnValue = null;
+  for(let z = 0; z < this.mapErrors.length; z++){
+    data[z] = {};
+    for(let i = 0; i < this.mapErrors[z].length; i++){
+      columnValue = this.mapErrors[z][i];
+      if(this.isDate(columnValue)){
+        columnValue = this.dateConvert(columnValue);
+      }
+        let columnName = this.displayedColumnsErrors[i];
+        data[z][columnName] = columnValue;
+    }
+  }
+  this.blockLeftAcc = true;
+  this.firstResultDisplayAcc = 1;
+  let lenght = this.mapErrors.length;
+  if(lenght <= 5){
+  this.countError = lenght;
+  this.blockRightAcc = true;
+  }else{
+    this.countError = 5;
+    this.blockRightAcc = false;
+    this.dataAppError = new Array();
+    this.dataAppError = data;
+    data = data.slice(0,5);
+  }
+  return data;
+}
+
+contaPratiche(lenght?: any, lastPage?:any){
+this.filterFlow.count = true;
+  this.flowConfigurationService.countTables(this.filterFlow)
+  .then(result => {
+      if (result.success) {
+        let mapCount = result.opTargetObject[0];
+        let count = Object.keys(mapCount);
+        this.countPratiche = +count[0];
+        if(lenght!=undefined){
+          this.filterFlow.count = false;
+          this.flowConfigurationService.searchFlowView(this.filterFlow).then(result => {
+            if (result.success) {
+              this.fkNameList.length = 0;
+              this.pkNameList.length = 0;
+               this.map = result.opTargetObject[0];
+               let m = this.fmflow.flowTableList[0].name;
+               let lenght = this.map[m].length;
+               if(lenght== 0){
+                  this.showLoadingIndicator = false;
+                  this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+                  this.blockRight = true;
+                  this.dataSource = [];
+                 return;
+               }else if(this.filterFlow.field.length>0 || this.filterFlow.fieldData.length>0){
+                if(lenght==this.countPratiche || lenght<10){
+                  this.blockRight = true;
+                }
+               }else if(lenght<10){
+                  this.blockRight = true;
+               }
+               for(let i = 0; i < this.sezioni.length; i++){
+                  this.generaColonne(i);
+                  this.dataSource[i] = new MatTableDataSource<any>(this.generateDatasource(i));
+                }
+                this.selectText = undefined;
+                this.selectedValue = undefined;
+                this.dateInTemp = undefined;
+                this.dateOutTemp = undefined;
+            } else {
+                this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento delle colonne');
+            }
+            this.showLoadingIndicator = false;
+          }).catch(() => {
+          this.showLoadingIndicator = false;
+          this.activityManager.engApplication.notifyMessage('Errore inaspettato');
+        });
+
+
+          // if(this.endPage==this.countPratiche){
+          //   this.blockRight = true;
+          // }
+        }
+        if(lastPage){
+            let mod = this.countPratiche % 10;
+            if(mod != 0){
+              this.filterFlow.firstResult = this.countPratiche - mod;
+            }else{
+              this.filterFlow.firstResult = this.countPratiche - this.filterFlow.maxResult;
+            }
+            this.endPage = this.countPratiche;
+            this.firstResultDisplay = this.filterFlow.firstResult + 1;
+            this.filterFlow.count = false;
+            this.ricercaConf();
+        }
+      } else {
+          this.activityManager.engApplication.notifyMessage('Errore nel conteggio delle pratiche');
+      }
+      this.filterFlow.count = false;
+  })
+  .catch(e => {
+    this.activityManager.engApplication.notifyMessage('Errore nel conteggio delle pratiche');
+    this.filterFlow.count = false;
+  }
+);
+}
+
+    exportFileXLSX(filterFlow: FilterFlow) {
+        this.download_ = true;
+      this.header.label = "Download XLS in corso...";
+      this.activityManager.getCurrentPage().setPageMainObject(this.header);
+      this.filterFlow.flow.flowTableList.forEach(fieldList => fieldList.flowTableFieldList.sort((a,b) => a. position - b.position));
+      if (! this.colonneAggiunte) {
+        for(let i=0; i<this.filterFlow.flow.flowTableList.length;i++){
+          let c = this.filterFlow.flow.flowTableList[i].flowTableFieldList.length-1;
+          let sys: FlowTableField = new FlowTableField();
+          if (i==0){
+            sys.name = "DATE_PROCESSING";
+            sys.fieldType = "Date";
+            sys.descriptionsm = "Data Ricezione";
+            sys.position=c+1;
+            this.filterFlow.flow.flowTableList[i].flowTableFieldList.push(sys);
+            sys = new FlowTableField();
+            sys.name = "STATUS_GROUP";
+            sys.fieldType = "String";
+            sys.descriptionsm = "Stato Validazione Pratica";
+            sys.position=c+2;
+            this.filterFlow.flow.flowTableList[i].flowTableFieldList.push(sys);
+            sys = new FlowTableField();
+            sys.name = "STATE_RECEVIED_APP";
+            sys.fieldType = "String";
+            sys.descriptionsm = "Stato Invio Da Verticale";
+            sys.position=c+3;
+            this.filterFlow.flow.flowTableList[i].flowTableFieldList.push(sys);
+            sys = new FlowTableField();
+            sys.name = "STATE_SEND_REGION";
+            sys.descriptionsm = "Stato Invio A Regione";
+            sys.fieldType = "String";
+            sys.position=c+4;
+            this.filterFlow.flow.flowTableList[i].flowTableFieldList.push(sys);
+            sys = new FlowTableField();
+            sys.name = "STATUS_REGION";
+            sys.descriptionsm = "Stato Validazione Pratica Regionale";
+            sys.fieldType = "String";
+            sys.position=c+5;
+            this.filterFlow.flow.flowTableList[i].flowTableFieldList.push(sys);
+          }
+          sys = new FlowTableField();
+          sys.name = "STATUS";
+          sys.descriptionsm = "Stato Validazione Record";
+          sys.fieldType = "String";
+          if (i==0){
+            sys.position=c+6;
+          } else {
+            sys.position=c+1;
+          }
+          this.filterFlow.flow.flowTableList[i].flowTableFieldList.push(sys);
+        }
+        this.colonneAggiunte=true;
+      }
+      
+      this.flowConfigurationService.downloadFlowViewXlsx(filterFlow).then(result => {
+          if (result.size > 0) {
+            this.header.visible = false;
+            this.header.label = "";
+            this.activityManager.getCurrentPage().setPageMainObject(this.header);
+            var file = new Blob([result], {type: 'application/zip'});
+            var fileURL = URL.createObjectURL(file);
+            var anchor = document.createElement("a");
+            anchor.download = "Pratiche flusso " + filterFlow.flow.name;
+            anchor.href = fileURL;
+            anchor.click();
+              this.download_ = false;
+              // window.open(fileURL);
+          } else {
+            this.activityManager.engApplication.notifyMessage('Nessun File trovato');
+            this.header.visible = false;
+            this.header.label = "";
+            this.activityManager.getCurrentPage().setPageMainObject(this.header);
+              this.download_ = false;
+          }
+    });
+
+
+    }
+
+    getReturns($event, section: any, index: number) {
+    if(this.expandedElementReg){
+      this.filterError.accordionReg = true;
+      this.firstResultDisplayReg = 1;
+      if(this.sectionBAreg==undefined || section!=this.sectionBAreg){
+        this.sectionBAreg=section;
+        this.flagReg = false;
+        this.filterError.firstResultReg = 0;
+        this.firstResultDisplayReg = this.filterError.firstResultReg + 1;
+        this.blockLeftReg = true;
+        this.endPageReg = 5;
+        this.blockRightReg = true;
+      }else if(this.sectionBAreg!=undefined || section==this.sectionBAreg){
+        if(this.filterError.firstResultReg<=1){
+          this.blockLeftReg = true;
+        }else{
+          this.blockLeftReg = false;
+        }
+          this.endPageReg = 5;
+          this.blockRightReg = true;
+      }
+
+      this.filterError.flow = this.fmflow;
+      this.filterError.index = index;
+      this.filterError.pkList = [];
+      this.filterError.pkNameList = [];
+      /*
+      for(let i = 0; i < this.pkNameList[index].length; i++){
+        this.filterError.pkList.push(section[this.pkNameList[index][i]]);
+        this.filterError.pkNameList.push(this.pkNameList[index][i]);
+      }
+      */
+     this.retrieveConfig(section);
+      /*let extractionId = null;
+      if(this.filterFlow) {
+        extractionId = this.filterFlow.importId;
+      }
+      this.flowConfigurationService.getReturns(this.filterError,extractionId)
+      .then(result => {
+          if (result.success) {
+            this.mapReturns = result.opTargetObject;
+            this.lenghtReturns = this.mapReturns["values"].length;
+               if(this.lenghtReturns== 0){
+                  this.showLoadingIndicator = false;
+                  this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+                  this.blockRightReg = true;
+                  this.firstResultDisplayReg = 0;
+                  this.countReturns = 0;
+                  this.displayedColumnsReturns = this.generaColonneReturns();
+                }else{
+                  this.displayedColumnsReturns = this.generaColonneReturns();
+                  this.dataSourceReturns = new MatTableDataSource<any>(this.generateDatasourceReturns());
+                }
+          } else {
+            this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+          }
+      })
+      .catch(e => {
+        this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+      }
+    );*/
+    }
+  }
+
+  retrieveConfig(section: any){
+    this.flowConfigurationService.searchTabgenFields(this.fmflow.name + "_SCARTI_REGIONE").then(response => {
+        if (response.success) {
+            if (response.opTargetObject.error) {
+            } else {
+                for(let i=0; i<response.opTargetObject.items.length; i++){
+                    if(response.opTargetObject.items[i].description == "CAMPO_CHIAVE"){
+                        var campoChiave = response.opTargetObject.items[i].tabgenValueColumn;
+                    }
+                    if(response.opTargetObject.items[i].description == "NOME_CAMPO"){
+                      var nomecampo = response.opTargetObject.items[i].tabgenValueColumn;
+                  }
+                }
+                let filterGlob: SearchFilters = new SearchFilters();
+                filterGlob.tabgenId = this.fmflow.name + "_SCARTI_REGIONE";
+                this.flowConfigurationService.tabgenValueListSearchDataProvider(filterGlob).then(response => {
+                    if (response.success) {
+                        if (response.opTargetObject.error) {
+                        } else {
+                            for(let i=0; i<response.opTargetObject.items.length; i++){
+                                if(response.opTargetObject.items[i][campoChiave.toLowerCase()] == "1"){
+                                    let nomeCampo = response.opTargetObject.items[i][nomecampo.toLowerCase()];
+                                    this.campiConfig.push(nomeCampo.toLowerCase());
+                                }
+                            }
+                            for(let j=0; j<this.campiConfig.length; j++){
+                                this.filterError.pkNameList.push(this.campiConfig[j]);
+                                this.filterError.pkList.push(section[this.campiConfig[j]]);
+                                // this.valoriConfig.push(section[this.campiConfig[j]]);
+                            }
+                            let extractionId = null;
+                            if(this.filterFlow) {
+                              extractionId = this.filterFlow.importId;
+                            }
+                            this.flowConfigurationService.getReturns(this.filterError,extractionId)
+                            .then(result => {
+                                if (result.success) {
+                                  this.mapReturns = result.opTargetObject;
+                                  this.lenghtReturns = this.mapReturns["values"].length;
+                                    if(this.lenghtReturns== 0){
+                                        this.showLoadingIndicator = false;
+                                        this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+                                        this.blockRightReg = true;
+                                        this.firstResultDisplayReg = 0;
+                                        this.countReturns = 0;
+                                        this.displayedColumnsReturns = this.generaColonneReturns();
+                                      }else{
+                                        this.displayedColumnsReturns = this.generaColonneReturns();
+                                        this.dataSourceReturns = new MatTableDataSource<any>(this.generateDatasourceReturns());
+                                      }
+                                } else {
+                                  this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+                                }
+                            })
+                            .catch(e => {
+                              this.activityManager.engApplication.notifyMessage('Nessun dato trovato');
+                            }
+                          );
+                        }
+                    }
+                }).catch(() => {
+                    this.showLoadingIndicator = false;
+                    let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+                    this.activityManager.engApplication.notifyMessage(errorMessage);
+                });
+            }
+        }
+    }).catch(() => {
+        let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+        this.activityManager.engApplication.notifyMessage(errorMessage);
+    });
+}
+
+  generaColonneReturns(): string[] {
+    let colonne: string[] = [];
+    let lenght = this.mapReturns["columns"].length;
+    for(let i=0; i< lenght; i++){
+      colonne.push(this.mapReturns["columns"][i]);
+    }
+    return (colonne);
+  }
+  
+  generateDatasourceReturns():Array<any>{
+    let data = new Array();
+    let columnValue = null;
+    let lenght = this.mapReturns["values"].length;
+    for(let z = 0; z < lenght; z++){
+      data[z] = {};
+      let lengthColumn = this.mapReturns["columns"].length;
+      for(let i = 0; i < lengthColumn; i++){
+        let columnName = this.displayedColumnsReturns[i];
+        columnValue = this.mapReturns["values"][z][columnName];
+        data[z][columnName] = columnValue;
+      }
+    }
+    this.blockLeftReg = true;
+    this.firstResultDisplayReg = 1;
+    if(lenght <= 5){
+      this.countReturns = lenght;
+      this.blockRightReg = true;
+    }else{
+      this.countReturns = 5;
+      this.blockRightReg = false;
+      this.dataAppReturns = new Array();
+      this.dataAppReturns = data;
+      data = data.slice(0,5);
+  }
+    return data;
+  }
+
+  searchFromPatient(element){
+    let colonne = Object.keys(element);
+    this.filtered = true;
+    for(let i=0; i<colonne.length; i++){
+      let field = colonne[i].replace(/\s/g, "");
+      this.filterFlow.fkFields.push(field);
+      this.filterFlow.fkValues.push((element[colonne[i]]).toUpperCase());
+      // this.filterFlow.param.push((element[colonne[i]]).toUpperCase());
+      let filterFlowField: FilterFlowField = new FilterFlowField();
+      filterFlowField.name = field;
+      filterFlowField.section = "0";
+      filterFlowField.param = (element[colonne[i]]).toUpperCase();
+      this.filterFlow.field.push(filterFlowField);
+    }
+    this.ricercaConf();
+
+  }
+
+  isEditModeEdit(){
+    let starterParams: any = this.activity.startingParams;
+    if(starterParams.extra){
+      return false;
+    }
+  }
+
+  sortData(event,index){
+    this.filterFlow.sortField = event.active;
+    this.filterFlow.sortDir = event.direction;
+    this.filterFlow.sortSez = index;
+    this.ricercaConf();
+  }
+
+  goToLastPage(){
+    if(this.countPratiche==undefined){
+      this.showLoadingIndicator = true;
+      let lenght = undefined;
+      let lastPage = true;
+      this.contaPratiche(lenght,lastPage);
+    }else{
+      let mod = this.countPratiche % 10;
+      if(mod != 0){
+        this.filterFlow.firstResult = this.countPratiche - mod;
+      }else{
+        this.filterFlow.firstResult = this.countPratiche - this.filterFlow.maxResult;
+      }
+      this.endPage = this.countPratiche;
+      this.firstResultDisplay = this.filterFlow.firstResult + 1;
+      this.ricercaConf();
+    }
+  }
+
+  goToFirstPage(){
+    if(!this.blockLeft){
+      this.showLoadingIndicator = true;
+      this.filterFlow.firstResult = 0;
+      this.filterFlow.maxResult = 10;
+      if(this.totalItems<=this.filterFlow.maxResult){
+        this.endPage = this.totalItems;
+      }else{
+        this.endPage = this.filterFlow.maxResult
+      }
+      this.firstResultDisplay = this.filterFlow.firstResult + 1;
+      this.ricercaConf();
+    }
+  }
+
+}

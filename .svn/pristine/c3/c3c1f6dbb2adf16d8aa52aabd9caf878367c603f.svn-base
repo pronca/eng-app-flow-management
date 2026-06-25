@@ -1,0 +1,344 @@
+.fix {
+  width: 49.5%;
+}
+
+.fix2 {
+  display: flex;
+  flex-flow: row wrap;
+}
+
+.fix3 {
+  width: 46% !important;
+}
+
+.fix3-radio {
+  margin: 3%;
+  display: block;
+}
+
+.example-form {
+  min-width: 150px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.example-full-width {
+  width: 100%;
+}
+
+.flow-extract-field .mat-form-field {
+  width: auto;
+  //margin: 1%;
+  padding-left: 2.5%;
+  padding-right: 1%;
+}
+
+.my-toolbar ::ng-deep .mat-toolbar-single-row {
+  height: 25px;
+  background-color: #007575;
+  color: white;
+  margin-left: 15px;
+  width: 97%;
+  box-shadow: 0 3px 3px -2px rgba(0, 0, 0, 0.2),
+  0 3px 4px 0 rgba(0, 0, 0, 0.14),
+  0 1px 8px 0 rgba(0, 0, 0, 0.12);
+}
+
+.my-toolbar2 ::ng-deep .mat-toolbar-single-row {
+  height: 25px;
+  background-color: #0f7595;
+  color: white;
+  margin-left: 15px;
+  width: 97.5%;
+  margin-bottom: 15px;
+  box-shadow: 0 3px 3px -2px rgba(0, 0, 0, 0.2),
+  0 3px 4px 0 rgba(0, 0, 0, 0.14),
+  0 1px 8px 0 rgba(0, 0, 0, 0.12);
+}
+
+:host ::ng-deep .mat-button {
+  min-width: 0px;
+  width: 20px;
+}
+
+.icona-menu {
+  color: black;
+  font-size: 30px;
+}
+
+.class-toolbar {
+  flex-direction: column;
+}
+
+.intestazione {
+  height: 60px;
+  background-color: white;
+  margin-top: 15px;
+  margin-left: 15px;
+  margin-bottom: 15px;
+  margin-right: 15px;
+  box-shadow: 0 3px 3px -2px rgba(0, 0, 0, .2), 0 3px 4px 0 rgba(0, 0, 0, .14), 0 1px 8px 0 rgba(0, 0, 0, .12);
+}
+
+.intestazione-content{
+  display: inline-flex;
+}
+
+.date-filter {
+  width: 100%;
+  display: flex;
+}
+
+.remove-date-button ::ng-deep .mat-button {
+  margin-left: 15px;
+  margin-top: 15px;
+}
+
+
+.bottone {
+  background-color: #FF5722;
+  color: white;
+  width: 40px;
+  height: 40px;
+  margin-top: 15px;
+  padding-left: 9px;
+}
+
+.mat-chip {
+  background-color: #007575;
+  color: white;
+}
+
+:host ::ng-deep .mat-chip.mat-standard-chip::after{
+  background: transparent;
+}
+
+:host ::ng-deep .mat-chip-selected {
+  background-color: #FF5722 !important;
+  font-weight: bold;
+}
+
+
+:host ::ng-deep .mat-chip-list-wrapper {
+  display: block !important;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: -4px;
+  padding-bottom: 15px;
+}
+
+.task-cat {
+  font-size: 1.2rem;
+  font-weight: 300;
+  padding: 2px 4px;
+  color: #fff;
+  border-radius: 2px;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  background-color: #00bcd4 !important;
+  margin-left: 15px;
+}
+
+
+.speed-dial-container {
+  position: absolute;
+  right: 10px;
+}
+
+.speed-dial-container.top {
+  top: 15px;
+}
+
+.speed-dial-container.bottom {
+  bottom: 90px;
+}
+
+.fixHidden {
+  display: none;
+  visibility: hidden !important;
+  max-height: 0px !important;
+}
+
+.test2 ::ng-deep .mat-form-field-appearance-legacy .mat-form-field-underline {
+  height: 0px !important;
+}
+
+.align-fix {
+  width: 95% !important;
+}
+
+.radio-fix {
+  margin-right: 3%;
+}
+
+.fix-contaioner {
+  margin-left: 1%;
+  margin-top: 1%;
+}
+
+.chips {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  display: flow-root;
+}
+
+.toolbarBottom {
+  bottom: 0;
+  // left: 0;
+  // position: fixed;
+  width: 100%;
+}
+
+.div-schedulazione{
+  display: inline-flex;
+}
+
+ .matcard-scehdulazione{
+  height: 60px;
+  background-color: white;
+  margin-top: 15px;
+  margin-left: 15px;
+  margin-right: 15px;
+  box-shadow: 0 3px 3px -2px rgba(0, 0, 0, .2), 0 3px 4px 0 rgba(0, 0, 0, .14), 0 1px 8px 0 rgba(0, 0, 0, .12);
+  margin-bottom: 30px;
+  display: inline-table;
+}
+
+::ng-deep .datatime{
+ ::ng-deep .eng-field{
+    display: table-caption !important;
+    padding-right: 35px !important;
+  }
+}
+
+::ng-deep .fieldTest{
+  ::ng-deep .mat-form-field-wrapper{
+    padding-bottom: 1.9em !important;
+  }
+}
+
+
+
+.mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 500;
+  background-color: rgba(0, 0, 0, 0.7)
+}
+
+.lds-roller {
+  top: 50%;
+  left: 50%;
+  display: inline-block;
+  position: fixed;
+  width: 64px;
+  height: 64px;
+}
+
+.lds-roller div {
+  animation: lds-roller 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  transform-origin: 32px 32px;
+
+}
+
+.lds-roller div:after {
+  content: " ";
+  display: block;
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffff;
+  margin: -3px 0 0 -3px;
+  z-index: 10;
+}
+
+.lds-roller div:nth-child(1) {
+  animation-delay: -0.036s;
+}
+
+.lds-roller div:nth-child(1):after {
+  top: 50px;
+  left: 50px;
+}
+
+.lds-roller div:nth-child(2) {
+  animation-delay: -0.072s;
+}
+
+.lds-roller div:nth-child(2):after {
+  top: 54px;
+  left: 45px;
+}
+
+.lds-roller div:nth-child(3) {
+  animation-delay: -0.108s;
+}
+
+.lds-roller div:nth-child(3):after {
+  top: 57px;
+  left: 39px;
+}
+
+.lds-roller div:nth-child(4) {
+  animation-delay: -0.144s;
+}
+
+.lds-roller div:nth-child(4):after {
+  top: 58px;
+  left: 32px;
+}
+
+.lds-roller div:nth-child(5) {
+  animation-delay: -0.18s;
+}
+
+.lds-roller div:nth-child(5):after {
+  top: 57px;
+  left: 25px;
+}
+
+.lds-roller div:nth-child(6) {
+  animation-delay: -0.216s;
+}
+
+.lds-roller div:nth-child(6):after {
+  top: 54px;
+  left: 19px;
+}
+
+.lds-roller div:nth-child(7) {
+  animation-delay: -0.252s;
+}
+
+.lds-roller div:nth-child(7):after {
+  top: 50px;
+  left: 14px;
+}
+
+.lds-roller div:nth-child(8) {
+  animation-delay: -0.288s;
+}
+
+.lds-roller div:nth-child(8):after {
+  top: 45px;
+  left: 10px;
+}
+
+@keyframes lds-roller {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+:host ::ng-deep .eng-date-time-field{
+  flex-direction: unset !important;
+}

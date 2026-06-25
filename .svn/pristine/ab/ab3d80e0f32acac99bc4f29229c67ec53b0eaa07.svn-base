@@ -1,0 +1,251 @@
+<div class="background">
+
+    <div class= "filters">
+        <div *ngFor="let filter of filtersKey; index as i">
+            <mat-form-field *ngIf="filter.fieldType === 'String'" class="filter">
+                <input matInput placeholder="{{filter.descriptionsm}}" [ngModel]="filterText.get(filter.name)" (ngModelChange)="filterText.set(filter.name, $event)"
+                (keydown.enter)="startSearch($event)" >
+            </mat-form-field>
+            <mat-form-field *ngIf="filter.fieldType === 'Date'" class="filter">
+                <input [ngModel]="filterText.get(filter.name)"
+                       (ngModelChange)="filterText.set(filter.name, $event)"
+                       [matDatepicker]="picker1"
+                       matInput placeholder="{{filter.descriptionsm}}">
+                <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+                <mat-datepicker #picker1></mat-datepicker>
+            </mat-form-field>
+        </div>
+
+
+        <button mat-button (click)="startSearch($event)" matTooltip="Cerca">
+            <mat-icon>search</mat-icon>
+        </button>
+
+        <button mat-button (click)="resetSearch()" matTooltip="Resetta filtri">
+            <mat-icon>delete_sweep</mat-icon>
+        </button>
+    </div>
+
+    <div *ngIf="this.startingParams.editItem.extra == 'pratiche_tot' || this.startingParams.editItem.extra == 'popup-extr'">
+
+        <!-- TABELLA PRATICHE TOTALI-->
+        <div class="example-container">
+            <div class="flowviewreps">
+            <table mat-table [dataSource]="dataSourceTot">
+
+                <div *ngFor="let field of colMap; index as j ">
+
+                    <div *ngIf="field.name != 'LINK' && field.name != 'FLOWVIEW'">
+                        <ng-container [matColumnDef]="field.name">
+                            <th mat-header-cell *matHeaderCellDef sticky> &nbsp;&nbsp;&nbsp;{{field.description}}&nbsp;&nbsp;&nbsp;
+                            </th>
+                            <td mat-cell *matCellDef="let element"> {{element[field.name]}} </td>
+                        </ng-container>
+                    </div>
+
+                    <div *ngIf="field.name == 'LINK'">
+                        <ng-container [matColumnDef]="field.name">
+                            <th mat-header-cell *matHeaderCellDef></th>
+                            <td mat-cell *matCellDef="let element">
+                                <button mat-icon-button matTooltip="Passaggio al Verticale" (click)="openExternalActivity(element)">
+                                    <mat-icon>open_in_new</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+                    </div>
+
+                    <div *ngIf="field.name == 'FLOWVIEW'">
+                        <ng-container [matColumnDef]="field.name">
+                            <th mat-header-cell *matHeaderCellDef></th>
+                            <td mat-cell *matCellDef="let element"> 
+                                <button mat-icon-button matTooltip="Visualizza Flusso" (click)= "goToFlowView(element)">
+                                    <mat-icon>cached</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+                    </div>
+
+                </div>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumnsTot; sticky: true"></tr>
+
+                <tr mat-row *matRowDef="let element; columns: displayedColumnsTot;" class="example-element-row"> </tr>
+
+            </table>
+            </div>
+        </div>
+    </div>
+
+
+    <div *ngIf="this.startingParams.editItem.extra == 'pratiche_error'">
+
+        <!-- TABELLA PRATICHE ERRATE-->
+        <div class="example-container">
+            <div class="flowviewreps">
+            <table mat-table [dataSource]="dataSource" multiTemplateDataRows>
+
+                
+                <div *ngFor="let field of colMap; index as j ">
+                    
+                    <div *ngIf="field.name != 'EXPAND' && field.name != 'LINK' && field.name != 'FLOWVIEW'">
+
+                        <ng-container [matColumnDef]="field.name">
+                            <th mat-header-cell *matHeaderCellDef sticky> &nbsp;&nbsp;&nbsp;{{field.description}}&nbsp;&nbsp;&nbsp;
+                            </th>
+                            <td mat-cell *matCellDef="let element"> {{element[field.name]}} </td>
+                        </ng-container>
+
+                    </div>
+
+                    <div *ngIf="field.name == 'EXPAND'">
+
+                        <ng-container [matColumnDef]="field.name">
+                            <th mat-header-cell *matHeaderCellDef></th>
+                            <td mat-cell *matCellDef="let element">
+                                <button mat-icon-button
+                                    (click)="expandedElement = expandedElement === element ? null : element; viewFlowPraticaError($event, element)">
+                                    <mat-icon>{{expandedElement === element ? 'expand_less' : 'expand_more'}}</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+
+                    </div>
+
+                    <div *ngIf="field.name == 'LINK'">
+                        <ng-container [matColumnDef]="field.name">
+                            <th mat-header-cell *matHeaderCellDef></th>
+                            <td mat-cell *matCellDef="let element">
+                                <button mat-icon-button matTooltip="Passaggio al Verticale" (click)="openExternalActivity(element)">
+                                    <mat-icon>open_in_new</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+                    </div>
+
+                    <div *ngIf="field.name == 'FLOWVIEW'">
+                        <ng-container [matColumnDef]="field.name">
+                            <th mat-header-cell *matHeaderCellDef></th>
+                            <td mat-cell *matCellDef="let element"> 
+                                <button mat-icon-button matTooltip="Visualizza Flusso" (click)= "goToFlowView(element)">
+                                    <mat-icon>cached</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+                    </div>
+                </div>
+
+                <ng-container matColumnDef="expandedDetail" class="prova">
+                    <td mat-cell *matCellDef="let element" [attr.colspan]="displayedColumns.length">
+                        <div class="example-element-detail"
+                            [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'">
+
+                            <table mat-table [dataSource]="dataSourceErrors">
+
+                                <div *ngFor="let fieldErrors of displayedColumnsErrors; index as j ">
+
+                                    <div *ngIf="fieldErrors != 'GRAVITA'">
+                                        <ng-container [matColumnDef]="fieldErrors">
+                                            <th mat-header-cell *matHeaderCellDef sticky class="provaHeader">
+                                                &nbsp;&nbsp;&nbsp;{{fieldErrors}}&nbsp;&nbsp;&nbsp; </th>
+                                            <td mat-cell *matCellDef="let elementErrors" class="provaCell">
+                                                {{elementErrors[fieldErrors]}} </td>
+                                        </ng-container>
+                                    </div>
+
+                                    <div *ngIf="fieldErrors == 'GRAVITA'">
+                                        <ng-container [matColumnDef]="fieldErrors">
+                                            <th mat-header-cell *matHeaderCellDef sticky class="provaHeader">GRAVITA'
+                                            </th>
+                                            <td mat-cell *matCellDef="let elementErrors" class="provaCell">
+                                                <mat-icon *ngIf="elementErrors['GRAVITA'] == 'WARNING'"
+                                                    matTooltip="WARNING" style="color: orange">warning</mat-icon>
+                                                <mat-icon *ngIf="elementErrors['GRAVITA'] == 'SEGNALAZIONE'"
+                                                    matTooltip="SEGNALAZIONE" style="color: orange">warning</mat-icon>
+                                                <mat-icon *ngIf="elementErrors['GRAVITA'] == 'ERROR'" matTooltip="ERROR"
+                                                    style="color: crimson">error</mat-icon>
+                                                <mat-icon *ngIf="elementErrors['GRAVITA'] == 'SCARTO'"
+                                                    matTooltip="SCARTO" style="color: crimson">error</mat-icon>
+                                            </td>
+                                        </ng-container>
+                                    </div>
+
+                                </div>
+
+                                <tr mat-header-row *matHeaderRowDef="displayedColumnsErrors; sticky: true"></tr>
+
+                                <tr mat-row *matRowDef="let elementErrors; columns: displayedColumnsErrors;"
+                                    class="prova"></tr>
+
+                            </table>
+                        </div>
+
+                        <div class="example-element-detail"
+                            [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'">
+                            <mat-toolbar class="PaginatorToolbar">
+                                <mat-icon *ngIf="blockLeftAcc === true" (click)="getServerDataLeftAcc($event, element)"
+                                    style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_left</mat-icon>
+                                <mat-icon *ngIf="blockLeftAcc === false" (click)="getServerDataLeftAcc($event, element)"
+                                    style="cursor:pointer">keyboard_arrow_left</mat-icon>
+                                <mat-icon *ngIf="blockRightAcc === true"
+                                    (click)="getServerDataRightAcc($event, element)"
+                                    style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_right</mat-icon>
+                                <mat-icon *ngIf="blockRightAcc === false"
+                                    (click)="getServerDataRightAcc($event, element)" style="cursor:pointer">
+                                    keyboard_arrow_right</mat-icon>
+                                &nbsp;{{firstResultDisplayAcc}}-{{endPageAcc}}&nbsp;&nbsp;di&nbsp;{{errorCount}}
+                            </mat-toolbar>
+                        </div>
+
+                    </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+
+                <tr mat-row *matRowDef="let element; columns: displayedColumns;" class="example-element-row"
+                    [class.example-expanded-row]="expandedElement === element">
+                </tr>
+
+                <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+
+            </table>
+        </div>
+        </div>
+    </div>
+
+        <mat-toolbar color="primary" class="toolbarBottom">
+            <button mat-icon-button *ngIf="blockLeft === true" matTooltip="Prima pagina" (click)= "goToFirstPage()" style="cursor:default; color: rgba(0,0,0,0.38)">
+                <mat-icon>first_page</mat-icon>
+            </button>
+            <button mat-icon-button *ngIf="blockLeft === false" matTooltip="Prima pagina" (click)= "goToFirstPage()" style="cursor:pointer">
+                <mat-icon>first_page</mat-icon>
+            </button>
+            <mat-icon *ngIf="blockLeft === true" (click)="getServerDataLeft()"
+                style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_left</mat-icon>
+            <mat-icon *ngIf="blockLeft === false" (click)="getServerDataLeft()" style="cursor:pointer">
+                keyboard_arrow_left</mat-icon>
+            <mat-icon *ngIf="blockRight === true" (click)="getServerDataRight()"
+                style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_right</mat-icon>
+            <mat-icon *ngIf="blockRight === false" (click)="getServerDataRight()" style="cursor:pointer">
+                keyboard_arrow_right</mat-icon>
+            &nbsp;{{firstResultDisplay}}-{{endPage}}&nbsp;&nbsp;di&nbsp;{{totalItems}}
+            <button mat-icon-button *ngIf="blockRight === true" matTooltip="Ultima pagina" (click)= "goToLastPage()" style="cursor:default; color: rgba(0,0,0,0.38)">
+                <mat-icon>last_page</mat-icon>
+            </button>
+            <button mat-icon-button *ngIf="blockRight === false" matTooltip="Ultima pagina" (click)= "goToLastPage()" style="cursor:pointer">
+                <mat-icon>last_page</mat-icon>
+            </button>
+        </mat-toolbar>
+</div>
+
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+</div>

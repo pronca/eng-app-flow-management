@@ -1,0 +1,44 @@
+{
+  "name": "eng-app-flow-management",
+  "version": "3.9.0-RC3",
+  "license": "MIT",
+  "peerDependencies": {
+    "@angular/common": "8.2.14",
+    "@angular/core": "8.2.14",
+    "@angular/animations": "8.2.14",
+    "@angular/cdk": "8.2.3",
+    "@angular/flex-layout": "^8.0.0-beta.27",
+    "@angular/forms": "8.2.14",
+    "@angular/http": "8.2.14",
+    "@angular/material": "8.2.3",
+    "@angular/router": "8.2.14",
+    "@ngx-translate/core": "^11.0.1",
+    "angular-md2": "6.3.0",
+    "moment": "2.24.0",
+    "ng2-ace-editor": "^0.3.8",
+    "rxjs": "6.5.5",
+    "eng-app": "3.0.0"
+  },
+  "eng-app-info": {
+    "eng-app-modules": [
+      {
+        "module-name": "EngAppFlowManagementModule",
+        "depends": [
+          {
+            "name": "EngAppModule",
+            "version": "^3.29.0"
+          }
+        ]
+      }
+    ],
+    "microservices": {
+      "components": [
+        {
+          "name": "it.eng.care.microservice.flow",
+          "version": "^3.9.0-RC3",
+          "mandatory": true
+        }
+      ]
+    }
+  }
+}

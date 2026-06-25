@@ -1,0 +1,81 @@
+<div class="flow-extract-field">
+
+    <mat-card class="talend-card">
+
+        <mat-form-field  >
+            <mat-label>Flussi</mat-label>
+                <mat-select [disabled]="editFlow" [(ngModel)]="opt_id"  maxlength="100" required="true" >
+                    <mat-option *ngFor="let opt of flows"  [value]=opt.id  (click)= "initVersion(opt)">
+                        {{opt.name}}
+                    </mat-option>
+                </mat-select>
+        </mat-form-field  >
+
+        <mat-form-field  >
+            <mat-label>Versioni</mat-label>
+                <mat-select [disabled]="editFlow || isDisableVersion"  [(ngModel)]="version_id"  maxlength="100" required="true" >
+                    <mat-option *ngFor="let fmversion of versions" [value]=fmversion.id (click)="selecteVersion(fmversion)">
+                        {{fmversion.version}}
+                    </mat-option>
+                </mat-select>
+        </mat-form-field>
+
+    </mat-card>
+
+</div>
+
+<div class="example-container">
+    <div class="flowviewreps">
+        <table #table [dataSource]="dataSource" mat-table> 
+            <ng-container matColumnDef="section">
+                <th *matHeaderCellDef mat-header-cell sticky> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SEZIONE</th>
+                <td *matCellDef="let element" mat-cell (click)="$event.stopPropagation()"> {{element.section}} </td>
+            </ng-container>
+
+            <ng-container matColumnDef="check">
+                <th *matHeaderCellDef mat-header-cell sticky> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FILE PRESENTE</th>
+                <td *matCellDef="let element" mat-cell>
+                    <mat-icon *ngIf="element.check === 'uploaded'" matTooltip="File presente">check</mat-icon>
+                    <mat-icon *ngIf="element.check === 'not_uploaded'" matTooltip="File non presente">close</mat-icon>
+                    <mat-icon *ngIf="element.check === 'uploading'" matTooltip="File caricato">arrow_upward</mat-icon>
+                </td>
+            </ng-container>
+
+            <ng-container matColumnDef="upload">
+                <th *matHeaderCellDef mat-header-cell sticky> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UPLOAD</th>
+                <td *matCellDef="let element" mat-cell>
+                    <button mat-icon-button *ngIf="element.check === 'not_uploaded'" matTooltip="Upload" (click)="input.click()">
+                        <mat-icon>note_add</mat-icon>
+                    </button>
+                    <button mat-icon-button *ngIf="element.check === 'uploaded' || element.check === 'uploading'" matTooltip="Replace" (click)="input.click()">
+                        <mat-icon>swap_vertical_circle</mat-icon>
+                    </button>
+                    <input hidden type="file" #input (change)="uploadFile($event.target.files, element)">
+                </td>
+            </ng-container>
+
+            <ng-container matColumnDef="delete">
+                <th *matHeaderCellDef mat-header-cell sticky> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DELETE</th>
+                <td *matCellDef="let element" mat-cell>
+                    <button mat-icon-button matTooltip="Delete" [disabled]="element.check === 'not_uploaded'" (click)="deleteAttachment(element)">
+                        <mat-icon>delete</mat-icon>
+                    </button>
+                </td>
+            </ng-container>
+            <tr *matHeaderRowDef="displayedColumns; sticky: true" mat-header-row></tr>
+            <tr *matRowDef="let row; columns: displayedColumns;" mat-row></tr>
+        </table>
+    </div>
+</div>
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+    </div>

@@ -1,0 +1,18 @@
+.driver-card {
+    margin: 25px;
+}
+
+.background {
+    background-color: #fafafa;
+  }
+  
+  ::ng-deep .activity-element {
+    margin: 0px;
+    flex: 1;
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    right: 0px;
+    left: 0px;
+    background-color: #fafafa;
+  }

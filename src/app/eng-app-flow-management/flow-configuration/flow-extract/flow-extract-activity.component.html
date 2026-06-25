@@ -1,0 +1,92 @@
+<div class="flow-extract-field">
+
+
+    <div>
+
+    <mat-card class="extract-card">
+
+        <mat-form-field>
+        <mat-label>Flussi</mat-label>
+            <mat-select [(ngModel)]="opt_id" [disabled]="editFlow" maxlength="100" required="true">
+                <mat-option *ngFor="let opt of flows"  [value]=opt.id  (onSelectionChange)="initVersion(opt)">
+                    {{opt.name}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+
+        <mat-label>Versioni</mat-label>
+            <mat-select [(ngModel)]="version_id" [disabled]="editFlow || isDisableVersion" maxlength="100" required="true">
+                <mat-option *ngFor="let fmversion of versions" [value]=fmversion.id  (onSelectionChange)= "initDataField(fmversion)">
+                    {{fmversion.name}}
+                </mat-option>
+            </mat-select>
+    </mat-form-field>
+    </mat-card>
+
+</div>
+
+   <div *ngFor="let df of  flowExtract.dateFields; index as i" >
+ 
+        <mat-form-field style="width:100%;"> 
+            <mat-label>Seleziona Campo</mat-label>
+                <mat-select [(ngModel)]="flowExtract.dateFields[i].id_field" maxlength="100" required="true"> 
+                    <mat-option *ngFor="let dp of dateFields, index as i" [value]="dp.id" (click)= "addDataField(i)">
+                        {{dp.name}}
+                    </mat-option>
+
+                </mat-select>
+
+        </mat-form-field> 
+
+        <eng-date-field 
+            fxFlex='40'
+            label='DAL' 
+            required="true"
+            [property]= '"date_from"+i'
+            [defaultValue]=flowExtract.dateFields[i].date_from>
+        </eng-date-field>
+
+
+        <eng-date-field 
+            fxFlex='40'
+            label='AL' 
+            required="true"
+            [property]= '"date_to"+i'
+            [defaultValue]=flowExtract.dateFields[i].date_to>
+        </eng-date-field>
+
+
+        <button (click)="removeField(i)" class="remove-button" mat-button>
+            <mat-icon>remove_circle_outline</mat-icon>
+            Rimuovi data
+        </button>
+
+    </div>
+
+    <div>
+        <button (click)="addField()" class="add-button" mat-button [disabled]="disableAdd">
+            <mat-icon>add_circle_outline</mat-icon>
+            Aggiungi data di riferimento
+        </button>
+    </div>
+
+
+    <div class="chips">
+        <mat-chip-list  style="text-align:center;">
+            <mat-chip *ngFor ="let stat of stati, index as i" (click)="changeSelected($event, stat.name)" color="accent">{{stat.name}}</mat-chip>
+        </mat-chip-list>
+</div>
+
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+</div>

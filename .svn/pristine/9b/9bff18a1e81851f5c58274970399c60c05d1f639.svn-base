@@ -1,0 +1,373 @@
+<div class="backgroundd">
+<div class="background card-wrapper">
+    <div class="title-dash">
+        <div class="title-text-dash"> {{fmflow.name}} </div>
+        <div class="title-text-dash2"><i class="material-icons">access_time</i> ultimo aggiornamento: {{requestDate}}
+            <button class="card-icon" (click)="refreshMask()" mat-button >
+                <div>
+                    <i class="material-icons">update</i>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <mat-toolbar *ngIf="canViewMonthFromToFilters" class="toolbar-dash">
+ 
+        <eng-select-field fxFlex='20' label='YEAR_FLW' valueSet="year-value-set@local"  [defaultValue]=valueFilterYear
+        (change) = "serachDashYFromTo($event)" >
+        </eng-select-field>
+    
+        <eng-select-field fxFlex='20' label='FROM_MONTH_FLW_DASH' valueSet="month-value-set@local" [defaultValue]=valueFilterMonthFrom
+        (change) = "serachDashMFrom($event)"  >
+        </eng-select-field>
+    
+    
+        <eng-select-field fxFlex='20' label='TO_MONTH_FLW_DASH' valueSet="month-value-set@local" [defaultValue]=valueFilterMonthTo
+        (change) = "serachDashMTo($event)" >
+        </eng-select-field>
+
+        <ng-template *ngIf="extraFilter !== null && extraFilter.length >0" let-filter ngFor [ngForOf]="extraFilter">
+            <eng-select-field fxFlex='20' label='{{filter.label}}' valueSet="{{filter.campo | lowercase}}-filter-value-set@local"
+            [defaultValue]=filter.selected (change) = "serachDashFilter($event, filter)" >
+            </eng-select-field>
+        </ng-template>
+    
+        <button mat-button (click)="startSearch()" matTooltip="Cerca">
+            <mat-icon>search</mat-icon>
+        </button>
+
+        <button [hidden]="" (click)="fileInput.click()" mat-button>
+            <input hidden type="file" id="uploadReturnsInput" #fileInput
+                (change)="uploadReturns($event.target, valueFilterYear)" />
+            <mat-icon>publish</mat-icon>
+            <span>Upload Ritorno</span>
+        </button>
+    
+    </mat-toolbar>
+    <mat-toolbar *ngIf="!canViewMonthFromToFilters" class="toolbar-dash">
+
+
+        <eng-select-field fxFlex='20' label='MONTH_FLW' valueSet="month-value-set@local" [defaultValue]=valueFilterMonth
+                          (change)="serachDashM($event)">
+        </eng-select-field>
+
+        <eng-select-field fxFlex='20' label='YEAR_FLW' valueSet="year-value-set@local" [defaultValue]=valueFilterYear
+                          (change)="serachDashY($event)">
+        </eng-select-field>
+
+        <ng-template *ngIf="extraFilter !== null && extraFilter.length >0" let-filter ngFor [ngForOf]="extraFilter">
+            <eng-select-field fxFlex='20' label='{{filter.label}}' valueSet="{{filter.campo | lowercase}}-filter-value-set@local"
+            [defaultValue]=filter.selected (change) = "serachDashFilter($event, filter)" >
+            </eng-select-field>
+        </ng-template>
+
+		<button [hidden]="" (click)="fileInput.click()" mat-button>
+            <input hidden type="file" id="uploadReturnsInput" #fileInput
+                (change)="uploadReturns($event.target, valueFilterYear)" />
+            <mat-icon>publish</mat-icon>
+            <span>Upload Ritorno</span>
+        </button>
+
+
+    </mat-toolbar>
+
+    <!-- FILTRI -->
+
+    <!-- <div>
+            <eng-select-field  
+                            [style.padding-bottom]="'25px'" 
+                            fxFlex='50'
+                            label='ANNO' >
+            </eng-select-field>
+    
+            <eng-select-field  
+                            [style.padding-bottom]="'25px'" 
+                            fxFlex='50'
+                            label='MESE' >
+            </eng-select-field>
+        
+            <eng-check-field 
+                            label='TREDICESIMO'
+                            [defaultValue]= false
+                            fxFlex='50'>
+            </eng-check-field>
+        </div> -->
+
+    <!-- END FILTRI -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-3 col-md-6 col-sm-6">
+                    <div class="card card-stats">
+                        <div class="card-header card-header-success card-header-icon">
+                            <button class="card-icon" matTooltip="{{praticheTooltip}}" mat-button (click)="viewPraticheTot('play', $event)">
+                                <div>
+                                    <i class="material-icons">content_copy</i>
+                                </div>
+                            </button>
+                            <p class="card-category">{{praticheLabel}}</p>
+                            <!-- {{fmflow.name}} -->
+                            <h3 class="newcard-title"> {{praticheValue | number: '2.'}}
+                                <small></small>
+                            </h3>
+                        </div>
+                        <div class="card-footer">
+                            <div class="stats">Visualizza pratiche
+
+                                <mat-icon>content_copy</mat-icon>
+
+                                <!-- <i class="material-icons text-danger">content_copy</i>
+                            <a (click)="viewPraticheTot('play', request, item, $event)">Visualizza pratiche</a> -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6 col-sm-6">
+                    <div class="card card-stats">
+                        <div class="card-header card-header-danger card-header-icon">
+                            <button class="card-icon"  matTooltip="{{praticheErrorsTooltip}}" mat-button (click)="viewPraticheErr('play', $event)">
+                                <div>
+                                    <i class="material-icons">error</i>
+                                </div>
+                            </button>
+                            <p class="card-category">{{praticheErrorsLabel}}</p>
+                            <!-- {{fmflow.name}} -->
+                            <h3 class="newcard-title"> {{praticheErrorsValue | number: '2.'}}
+                                <small></small>
+                            </h3>
+                        </div>
+                        <div class="card-footer">
+                            <div class="stats"> Visualizza pratiche errate
+                                <mat-icon>warning</mat-icon>
+                                <!-- <i class="material-icons text-danger">warning</i>
+                            <a (click)="viewPraticheErr('play', request, item, $event)">Visualizza pratiche errate</a> -->
+                            </div>
+                            <div class="stats" id="stat">
+<!--                                <mat-icon (click)="exportFileXLSX()">get_app</mat-icon>-->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <!-- <div class="col-lg-3 col-md-6 col-sm-6">
+                <div class="card card-stats">
+                    <div class="card-header card-header-success card-header-icon">
+                        <div class="card-icon">
+                            <i class="material-icons">euro_symbol</i>
+                        </div>
+                        <p class="card-category">Ricavi totali</p>
+                        <h3 class="card-title">€3400</h3>
+                    </div>
+                    <div class="card-footer">
+                        <div class="stats">
+                            Ultimo mese<mat-icon>date_range</mat-icon>
+                        </div>
+                    </div>
+                </div>
+            </div> -->
+
+                <div class="col-lg-3 col-md-6 col-sm-6">
+                    <div class="card card-stats">
+
+                        <div class="card-header card-header-danger card-header-icon">
+                            <button class="card-icon" matTooltip="{{errorsTooltip}}" mat-button (click)="errorView('play', $event)">
+                                <div>
+                                    <i class="material-icons">error</i>
+                                </div>
+                            </button>
+                            <p class="card-category">{{errorsLabel}}</p>
+                            <h3 class="newcard-title">{{errorsValue | number: '2.'}}</h3>
+                        </div>
+                        <div class="card-footer">
+                            <div class="stats">Visualizza Errori
+                                <mat-icon>error</mat-icon>
+                            </div>
+                            <div class="stats"
+                                 id="stat"
+                                 matTooltip="Download XLSX">
+                                <mat-icon (click)="downloadXLSXCheck('AZIENDALE','ERRORI')">get_app</mat-icon>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+         <!--       <div class="col-lg-3 col-md-6 col-sm-6">
+                    <div class="card card-stats">
+                        <div class="card-header card-header-info card-header-icon">
+                            <div class="card-icon">
+                                <i class="material-icons">attach_money</i>
+                            </div>
+                            <p class="card-category">{{ricaviTotaliLabel}}</p>
+                         
+                            <h3 class="newcard-title"> {{ricaviTotaliValue | number: '2.'}}€
+                                <small></small>
+                            </h3>
+                        </div>
+                        <div class="card-footer">
+                            <div class="stats">Ricavi totali
+                                <mat-icon>attach_money</mat-icon>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            -->
+
+
+                <div *ngFor = "let element of elementDashboard" class="col-lg-3 col-md-6 col-sm-6">
+                    <div class="card card-stats">
+                        <div class="card-header {{element.color}} card-header-icon">
+                            <div class="card-icon" matTooltip="{{element.tooltip}}"> 
+                                <i class="material-icons" *ngIf="element.name != 'RICAVI_TOTALI' && element.query != null" style="cursor:pointer" (click)="genericMethod(element, $event)">{{element.icon}}</i>
+                                <i class="material-icons" *ngIf="element.name === 'RICAVI_TOTALI'" style="cursor:default">{{element.icon}}</i>
+                                <i class="material-icons" *ngIf="element.name != 'RICAVI_TOTALI' && element.query == null" style="cursor:default">{{element.icon}}</i>
+
+                            </div>
+                            <p class="card-category">{{element.label}}</p>
+                            <!-- {{fmflow.name}} -->
+                            <h3 class="newcard-title"> {{element.value}}
+                                <small></small>
+                            </h3>
+                        </div>
+                        <div class="card-footer">
+                            <div class="stats">
+                                {{element.footer}}
+                                <mat-icon >{{element.icon}}</mat-icon>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- GRAFICI -->
+
+
+        <div class="row " *ngIf="visible || canViewMonthFromToFilters">
+
+
+            <div class="col-md-4 padding-label" *ngIf="visiblePratiche">
+                <div class="card card-chart">
+
+                    <div style="display: block;">
+                        <canvas baseChart [datasets]="labelMFL2" [labels]="lineChartLabels2" [options]="lineChartOptions2"
+                                [chartType]="lineChartType2" [colors]=_lineChartColors2></canvas>
+
+
+                    </div>
+                    <div class="card-body">
+                        <h4 class="card-title">Pratiche ricevute </h4>
+                        <p class="card-category">Dati ricevuti negli ultimi 7 giorni
+                            <span class="text-success"><i class="fa fa-long-arrow-up"></i> </span> </p>
+                    </div>
+
+                </div>
+            </div>
+
+
+            <div class="col-md-4 padding-label" *ngIf="visibleError">
+                <div class="card card-chart">
+
+                    <div style="display: block;">
+                        <canvas baseChart [datasets]="labelMFL3" [labels]="lineChartLabels3" [options]="lineChartOptions3"
+                                [chartType]="lineChartType3" [colors]=_lineChartColors3></canvas>
+                    </div>
+
+                    <div class="card-body">
+                        <h4 class="card-title">Errori Top 5 <button mat-button (click)="errorViewTop('play', $event)">
+                            <mat-icon style="color:#E73E3A">error</mat-icon>
+                        </button></h4>
+                        <p class="card-category">Dati ricevuti in questo mese
+                            <span class="text-success"><i class="fa fa-long-arrow-up"></i> </span> </p>
+                    </div>
+
+                </div>
+            </div>
+
+
+            <div class="col-md-4 padding-label" *ngIf="visibleScarto">
+                <div class="card card-chart">
+
+                    <div style="display: block;">
+                        <canvas baseChart [datasets]="labelMFL" [labels]="lineChartLabels" [options]="lineChartOptions"
+                                [chartType]="lineChartType" [colors]=_lineChartColors></canvas>
+                    </div>
+
+                    <div class="card-body">
+                        <h4 class="card-title">Scarto ricavi </h4>
+                        <p class="card-category">Dati ricevuti in questo mese
+                            <span class="text-success"><i class="fa fa-long-arrow-up"></i> </span> </p>
+                    </div>
+
+                </div>
+            </div>
+
+
+        </div>
+
+
+        <div class="main-content" *ngIf="visibleOld || canViewMonthFromToFilters">
+
+            <div class="title-dash">
+                <div class="title-text-dash"> REGIONE </div>
+               
+            </div>
+
+
+            <div class="container-fluid">
+                <div class="row">
+
+
+
+                    <div *ngFor = "let element of elementRegionDashboard" class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="card card-stats">
+                            <div class="card-header {{element.color}} card-header-icon">
+                                    <button class="card-icon" matTooltip="{{element.tooltip}}" mat-button *ngIf="element.name != 'RICAVI_TOT_RIC_REG' && element.query != null" style="cursor:pointer" (click)="genericMethod(element, $event)">
+                                        <div> 
+                                            <i class="material-icons">{{element.icon}}</i>
+                                        </div>
+                                    </button>
+                                    <button class="card-icon" matTooltip="{{element.tooltip}}" mat-button *ngIf="element.name === 'RICAVI_TOT_RIC_REG'" style="cursor:default" (click)="genericMethod(element, $event)">
+                                        <div> 
+                                            <i class="material-icons">{{element.icon}}</i>
+                                        </div>
+                                    </button>
+                                    <button class="card-icon" matTooltip="{{element.tooltip}}" mat-button *ngIf="element.name != 'RICAVI_TOT_RIC_REG' && element.query == null" style="cursor:default" (click)="genericMethod(element, $event)">
+                                        <div> 
+                                            <i class="material-icons">{{element.icon}}</i>
+                                        </div>
+                                    </button>
+                                    <p class="card-category">{{element.label}}</p>
+                                    <!-- {{fmflow.name}} -->
+                                    <h3 class="newcard-title"> {{element.value}}
+                                        <small></small>
+                                    </h3>
+                            </div>
+                            <div class="card-footer">
+                                <div class="stats">
+                                    {{element.footer}}
+                                    <mat-icon >{{element.icon}}</mat-icon>
+                                </div>
+                                <div *ngIf="element.name === 'ERRORI_REG' || element.name === 'PRATICHE_NOT_SEND_REG'" class="stats"
+                                    id="stat"
+                                    matTooltip="Download XLSX">
+                                    <mat-icon (click)="downloadXLSXCheck(element.tipo,element.name)">get_app</mat-icon>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                  
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</div>

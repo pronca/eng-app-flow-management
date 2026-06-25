@@ -1,0 +1,35 @@
+@import "./variables/colors.scss";
+@import "./variables/shadow.scss";
+
+@import "./variables/bootstrap-material-design-base.scss";
+
+// Customized BS variables
+@import "./variables/custom-forms.scss";
+@import "./variables/spacing.scss";
+@import "./variables/body.scss";
+@import "./variables/brand.scss";
+@import "./variables/buttons.scss";
+@import "./variables/card.scss";
+@import "./variables/code.scss";
+@import "./variables/dropdown.scss";
+@import "./variables/forms.scss";
+@import "./variables/list-group.scss";
+@import "./variables/nav.scss";
+@import "./variables/pagination.scss";
+@import "./variables/state.scss";
+@import "./variables/tables.scss";
+@import "./variables/tooltip.scss";
+@import "./variables/type.scss";
+@import "./variables/modals.scss";
+
+// import their vars after customization for use below
+$enable-flex: true; // fully adopt flexbox layouts
+$enable-shadows: true; // enable shadows, set to false to turn off shadows
+
+
+@import "./variables/layout.scss";
+@import "./variables/menu.scss";
+@import "./variables/drawer.scss";
+@import "./variables/snackbar.scss";
+
+@import "./variables/bootstrap-material-design.scss";

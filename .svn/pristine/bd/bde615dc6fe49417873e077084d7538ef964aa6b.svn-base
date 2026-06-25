@@ -1,0 +1,65 @@
+<div class="background">
+    
+    <!-- <mat-toolbar color="primary">
+            <span>{{fmflow.description}}&nbsp;({{version}})</span>
+            <div class="updateDiv">{{month}}&nbsp;{{filterError.year}}</div>
+    </mat-toolbar> -->
+    
+    <!-- TABELLA -->
+     <div class="errors-container">
+        <table mat-table [dataSource]="dataSourceErrors">
+
+            <div *ngFor="let fieldErrors of displayedColumnsErrors; index as j ">
+
+            <div *ngIf="fieldErrors != 'GRAVITA'">
+                <ng-container [matColumnDef]="fieldErrors">
+                    <th mat-header-cell *matHeaderCellDef sticky class="provaHeader"> &nbsp;&nbsp;&nbsp;{{fieldErrors}}&nbsp;&nbsp;&nbsp; </th>
+                    <td mat-cell *matCellDef="let elementErrors" class="provaCell"> {{elementErrors[fieldErrors]}} </td>
+                </ng-container>
+            </div>                             
+
+                    <div *ngIf="fieldErrors == 'GRAVITA'">
+                        <ng-container [matColumnDef]="fieldErrors">
+                            <th mat-header-cell *matHeaderCellDef sticky class="provaHeader">GRAVITA'</th>
+                            <td mat-cell *matCellDef="let elementErrors" class="provaCell">
+                                <mat-icon *ngIf="elementErrors['GRAVITA'] == 'WARNING'" matTooltip="WARNING" style="color: orange">warning</mat-icon>
+                                <mat-icon *ngIf="elementErrors['GRAVITA'] == 'ERROR'" matTooltip="ERROR" style="color: crimson">error</mat-icon>
+                                <mat-icon *ngIf="elementErrors['GRAVITA'] == 'SCARTO'" matTooltip="SCARTO" style="color: crimson">error</mat-icon>
+                                <mat-icon *ngIf="elementErrors['GRAVITA'] == 'SEGNALAZIONE'" matTooltip="SEGNALAZIONE" style="color: orange">warning</mat-icon>
+                            </td>
+                        </ng-container>
+                    </div>
+
+            </div>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumnsErrors; sticky: true"></tr>
+
+            <tr mat-row *matRowDef="let elementErrors; columns: displayedColumnsErrors;" class="prova"></tr>
+
+        </table>
+
+     </div>
+    
+
+    <mat-toolbar color="primary" class="toolbarBottom">
+        <mat-icon *ngIf="blockLeft === true" (click)="getServerDataLeft()" style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_left</mat-icon>
+        <mat-icon *ngIf="blockLeft === false" (click)="getServerDataLeft()" style="cursor:pointer">keyboard_arrow_left</mat-icon>
+        <mat-icon *ngIf="blockRight === true" (click)="getServerDataRight()" style="cursor:default; color: rgba(0,0,0,0.38)">keyboard_arrow_right</mat-icon>
+        <mat-icon *ngIf="blockRight === false" (click)="getServerDataRight()" style="cursor:pointer">keyboard_arrow_right</mat-icon>
+        &nbsp;{{firstResultDisplay}}-{{endPage}}&nbsp;&nbsp;di&nbsp;{{totalItems}}
+    </mat-toolbar>
+
+</div>
+    
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+</div>

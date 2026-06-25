@@ -1,0 +1,551 @@
+<div class="flow-extract-field">
+    <mat-card class="intestazione">
+        <div class="intestazione-content">
+            <mat-form-field>
+                <mat-label>Flussi</mat-label>
+                <mat-select [(ngModel)]="flow_opt"
+                            [disabled]="isDisable"
+                            maxlength="100"
+                            required="true"
+                            (selectionChange)="initVersion($event.value)"
+                            [compareWith]="objectComparisonFunction">
+                    <mat-option (optionSelected)="initVersion(flow_opt)"
+                                *ngFor="let flow_opt of flows"
+                                [value]=flow_opt>
+                        {{flow_opt.name}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Versioni</mat-label>
+                <mat-select [(ngModel)]="version_opt"
+                            [disabled]="isDisable || isDisableVersion"
+                            required="true"
+                            (selectionChange)="initDataField($event.value)"
+                            [compareWith]="objectComparisonFunction">
+                    <mat-option (optionSelected)="initDataField(version_opt)"
+                                *ngFor="let version_opt of versions"
+                                [value]=version_opt>
+                        {{version_opt.name}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Filtri Dinamici</mat-label>
+                <mat-select [(ngModel)]="selected" [compareWith]="compareFn"
+                            [disabled]="isDisableDinamic || !isStandard"
+                            multiple>
+                    <mat-option (onSelectionChange)="initFilterDinamic($event)"
+                                *ngFor="let filtri of filters"
+                                [value]=filtri
+                                [disabled]="isDisable">
+                        {{filtri.name}}
+                    </mat-option>
+                </mat-select>
+<!--                <mat-select [(ngModel)]="selected"-->
+<!--                            [compareWith]="objectComparisonFunction"-->
+<!--                            [disabled]="isDisable"-->
+<!--                            (selectionChange)="initFilterDinamic($event.value)"-->
+<!--                            multiple>-->
+<!--                    <mat-option (optionSelected)="initFilterDinamic($event)"-->
+<!--                                *ngFor="let filtri of filters"-->
+<!--                                [value]=filtri>-->
+<!--                        {{filtri.name}}-->
+<!--                    </mat-option>-->
+<!--                </mat-select>-->
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Tipo Schedulazione</mat-label>
+                <mat-select [(ngModel)]="schedulingType"
+                            [disabled]="isDisableDinamic"
+                            required="true">
+                    <mat-option (onSelectionChange)="toggleDate($event)"
+                                *ngFor="let schedulingType of schedulingTypes"
+                                [value]=schedulingType[0]>
+                        {{schedulingType[1]}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field>
+                <input class="fixHidden" matInput>
+                <section>
+                    <!--[(ngModel)]="type"-->
+                    <mat-checkbox
+                    (change)="standar($event)"
+                    [disabled]="isDisableStandardCheck"
+                            [checked]="ckd">
+                        Estraz. Standard
+                    </mat-checkbox>
+                </section>
+            </mat-form-field>
+        </div>
+    </mat-card>
+
+    <mat-card class="matcard-scehdulazione" *ngIf="showDate || showInterval">
+        <div class="div-schedulazione">
+
+            <!-- <mat-form-field *ngIf="showDate">
+                <input [(ngModel)]="schedulingStartingTime"
+                       [matDatepicker]="picker1"
+                       matInput placeholder="Data Inizio">
+                <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+                <mat-datepicker #picker1></mat-datepicker>
+            </mat-form-field> -->
+
+            <eng-date-time-field *ngIf="showDate" (change)="changeDate($event)" class="dateTime"
+                fxFlex='50'
+                label='DATA_INIZIO' 
+                property= "schedulingStartingTime"
+                defaultValue=schedulingStartingTime>
+            </eng-date-time-field>
+
+            <mat-form-field *ngIf="showInterval" class="fieldTest">
+                <mat-label>Inervallo</mat-label>
+                <mat-select [(ngModel)]="schedulingInterval" >
+                    <mat-option 
+                        *ngFor="let schedulingInterval of schedulingIntervals"
+                        [value]=schedulingInterval[0]>
+                        {{schedulingInterval[1]}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <mat-form-field *ngIf="showDrg">
+                <input class="fixHidden" matInput>
+                <section>
+                    <mat-checkbox
+                    (change)="drg($event)"
+                    [checked]="ckdDrg">
+                        Calcola DRG
+                    </mat-checkbox>
+                </section>
+            </mat-form-field>
+        </div>
+    </mat-card>
+
+
+    <div class="fix2">
+        <div *ngFor="let co of flowConfigurationFilterFieldsSt | showfilter" class="fix">
+                <div *ngIf="co.filterType=='Text'">
+                    <div class="my-toolbar">
+                        <mat-toolbar>{{co.name}}</mat-toolbar>
+                    </div>
+                    <div class="fix-contaioner">
+                        <mat-form-field>
+                            <input [(ngModel)]="co.singleValue" [disabled]="isDisable" matInput
+                                   placeholder="Testo" [required]="co.mandatory">
+                        </mat-form-field>
+                    </div>
+                </div>
+            <!--COMBO FILTER -->
+            <div *ngIf="co.filterType=='ComboBox'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field>
+                        <mat-label>Seleziona Valore</mat-label>
+                        <mat-select [(ngModel)]="co.singleValue" [disabled]="isDisable">
+                            <mat-option *ngFor="let option of co.tabgenValueFilter" [value]="option">
+                                {{option}}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            </div>
+
+            <!--RADIO FILTER -->
+            <div *ngIf="co.filterType=='Radio'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-radio-group [(ngModel)]="co.singleValue" [disabled]="isDisable" aria-label="Seleziona Valore"
+                                     style="margin-left: 3% !important;"
+                                     [required]="co.mandatory">
+                        <mat-radio-button *ngFor="let option of co.tabgenValueFilter" [value]="option"
+                                          class="radio-fix">
+                            {{option}}
+                        </mat-radio-button>
+                    </mat-radio-group>
+                </div>
+            </div>
+
+    </div>
+    </div>
+
+    <div class="fix2">
+        <div *ngFor="let co of flowConfigurationFilterFieldsS | showfilter2" class="fix">
+
+            <!--DATE FILTER -->
+            <div *ngIf="co.filterType=='Date'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field *ngIf="co.range==false" class="fix3">
+                        <input [(ngModel)]="co.dateFromValue" [disabled]="isDisable" [matDatepicker]="picker1" matInput
+                               placeholder="Inserisci Data" [required]="co.mandatory">
+                        <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+                        <mat-datepicker #picker1></mat-datepicker>
+                    </mat-form-field>
+                    <div *ngIf="co.range==true">
+                        <mat-form-field class="fix3">
+                            <input [(ngModel)]="co.dateFromValue" [disabled]="isDisable" [matDatepicker]="picker1" matInput
+                                   placeholder="Dal" [required]="co.mandatory">
+                            <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+                            <mat-datepicker #picker1></mat-datepicker>
+                        </mat-form-field>
+                        <mat-form-field class="fix3">
+                            <input [(ngModel)]="co.dateToValue"
+                                   [disabled]="isDisable || co.dateFromValue==null"
+                                   [matDatepicker]="picker2"
+                                   matInput
+                                   placeholder="al"
+                                   [required]="co.mandatory"
+                                   [min]="co.dateFromValue">
+                            <mat-datepicker-toggle [for]="picker2" matSuffix></mat-datepicker-toggle>
+                            <mat-datepicker #picker2></mat-datepicker>
+                        </mat-form-field>
+                    </div>
+                </div>
+            </div>
+            <!--TEXT FILTER -->
+            <div *ngIf="co.filterType=='Text'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field>
+                        <input [(ngModel)]="co.singleValue" [disabled]="isDisable" matInput
+                               placeholder="Testo" [required]="co.mandatory">
+                    </mat-form-field>
+                </div>
+            </div>
+            <!--NUMERIC FILTER -->
+            <div *ngIf="co.filterType=='Numeric'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field *ngIf="co.range==false" class="fix3">
+                        <input (keypress)="utils.numberOnly($event)" [(ngModel)]="co.numFromValue"
+                               [disabled]="isDisable"
+                               matInput
+                               placeholder="Valore"
+                               [required]="co.mandatory">
+                    </mat-form-field>
+                    <div *ngIf="co.range==true">
+                        <mat-form-field class="fix3">
+                            <input (keypress)="utils.numberOnly($event)" [(ngModel)]="co.numFromValue"
+                                   [disabled]="isDisable" matInput
+                                   placeholder="Dal"
+                                   [required]="co.mandatory">
+                        </mat-form-field>
+                        <mat-form-field class="fix3">
+                            <input (keypress)="utils.numberOnly($event)" [(ngModel)]="co.numToValue" [disabled]="isDisable"
+                                   matInput
+                                   placeholder="al"
+                                   [required]="co.mandatory">
+                        </mat-form-field>
+                    </div>
+                </div>
+            </div>
+            <!--COMBO FILTER -->
+            <div *ngIf="co.filterType=='ComboBox'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field>
+                        <mat-label>Seleziona Valore</mat-label>
+                        <mat-select [(ngModel)]="co.singleValue" [disabled]="isDisable">
+                            <mat-option *ngFor="let option of co.tabgenValueFilter" [value]="option">
+                                {{option}}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            </div>
+
+            <!--RADIO FILTER -->
+            <div *ngIf="co.filterType=='Radio'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-radio-group [(ngModel)]="co.singleValue" [disabled]="isDisable" aria-label="Seleziona Valore"
+                                     style="margin-left: 3% !important;"
+                                     [required]="co.mandatory">
+                        <mat-radio-button *ngFor="let option of co.tabgenValueFilter" [value]="option"
+                                          class="radio-fix">
+                            {{option}}
+                        </mat-radio-button>
+                    </mat-radio-group>
+                </div>
+            </div>
+
+            <!--MULTI FILTER -->
+            <div *ngIf="co.filterType=='Multi'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field class="fix3">
+                        <mat-label>Seleziona Valori</mat-label>
+                        <mat-select [(ngModel)]="co.multiValues" [disabled]="isDisable" [disabled]="isDisable" multiple
+                                    [required]="co.mandatory">
+                            <mat-option *ngFor="let topping of co.tabgenValueFilter"
+                                        [value]="topping">{{topping}}</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            </div>
+
+            <!--CAMPI FILTER-->
+            <div *ngIf="co.filterType=='Campi'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                <mat-form-field class="example-full-width">
+                    <input [(ngModel)]="co.singleValue" [disabled]="isDisable" [matAutocomplete]="auto"
+                           aria-label="Number" matInput
+                           placeholder="Seleziona Valore" type="text"
+                           [required]="co.mandatory">
+                    <mat-autocomplete #auto="matAutocomplete">
+                        <mat-option *ngFor="let option of options" [value]="option">
+                            {{option}}
+                        </mat-option>
+                    </mat-autocomplete>
+                </mat-form-field>
+                </div>
+            </div>
+
+            <!--LOOKUP FILTER -->
+            <div *ngIf="co.filterType=='Lookup'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                <mat-form-field class="example-full-width">
+                    <input [(ngModel)]="co.singleValue" [disabled]="isDisable" [matAutocomplete]="auto"
+                           aria-label="Number" matInput
+                           placeholder="Seleziona Valore" type="text"
+                           [required]="co.mandatory">
+                    <mat-autocomplete #auto="matAutocomplete">
+                        <mat-option *ngFor="let option of options" [value]="option">
+                            {{option}}
+                        </mat-option>
+                    </mat-autocomplete>
+                </mat-form-field>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fix2">
+        <div *ngFor="let co of flowConfigurationFilterFields; index as i" class="fix">
+            <!--DATE FILTER -->
+            <div *ngIf="co.filterType=='Date'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field *ngIf="co.range==false" class="fix3">
+                        <input [(ngModel)]="co.dateFromValue"
+                               [disabled]="isDisable"
+                               [matDatepicker]="picker1"
+                               matInput placeholder="Inserisci Data"
+                               [required]="co.mandatory">
+                        <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+                        <mat-datepicker #picker1></mat-datepicker>
+                    </mat-form-field>
+                    <div *ngIf="co.range==true">
+                        <mat-form-field class="fix3">
+                            <input [(ngModel)]="co.dateFromValue" [disabled]="isDisable" [matDatepicker]="picker1"
+                                   matInput
+                                   placeholder="Dal" [required]="co.mandatory">
+                            <mat-datepicker-toggle [for]="picker1" matSuffix></mat-datepicker-toggle>
+                            <mat-datepicker #picker1></mat-datepicker>
+                        </mat-form-field>
+                        <mat-form-field class="fix3">
+                            <input [(ngModel)]="co.dateToValue" [disabled]="isDisable || co.dateFromValue==null" [matDatepicker]="picker2"
+                                   matInput
+                                   placeholder="al"
+                                   [required]="co.mandatory">
+                            <mat-datepicker-toggle [for]="picker2" matSuffix></mat-datepicker-toggle>
+                            <mat-datepicker #picker2></mat-datepicker>
+                        </mat-form-field>
+                    </div>
+                </div>
+            </div>
+
+            <!--TEXT FILTER -->
+            <div *ngIf="co.filterType=='Text'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field>
+                        <input [(ngModel)]="co.singleValue" [disabled]="isDisable" matInput
+                               placeholder="Testo"
+                               [required]="co.mandatory">
+                    </mat-form-field>
+                </div>
+            </div>
+
+            <!--NUMERIC FILTER -->
+            <div *ngIf="co.filterType=='Numeric'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field *ngIf="co.range==false" class="fix3">
+                        <input (keypress)="utils.numberOnly($event)"
+                               [(ngModel)]="co.numFromValue"
+                               [disabled]="isDisable"
+                               matInput
+                               placeholder="Valore"
+                               [required]="co.mandatory">
+                    </mat-form-field>
+                    <div *ngIf="co.range==true">
+                        <mat-form-field class="fix3">
+                            <input (keypress)="utils.numberOnly($event)" [(ngModel)]="co.numFromValue"
+                                   [disabled]="isDisable" matInput
+                                   placeholder="Dal"
+                                   [required]="co.mandatory">
+                        </mat-form-field>
+                        <mat-form-field class="fix3">
+                            <input (keypress)="utils.numberOnly($event)" [(ngModel)]="co.numToValue"
+                                   [disabled]="isDisable || co.numFromValue==null"
+                                   matInput
+                                   placeholder="al"
+                                   [required]="co.mandatory">
+                        </mat-form-field>
+                    </div>
+                </div>
+            </div>
+
+            <!--COMBO FILTER -->
+            <div *ngIf="co.filterType=='ComboBox'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field>
+                        <mat-label>Seleziona Valore</mat-label>
+                        <mat-select [(ngModel)]="co.singleValue" [disabled]="isDisable">
+                            <mat-option *ngFor="let option of co.tabgenValueFilter" [value]="option">
+                                {{option}}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            </div>
+
+            <!--RADIO FILTER -->
+            <div *ngIf="co.filterType=='Radio'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-radio-group [(ngModel)]="co.singleValue"
+                                     [disabled]="isDisable"
+                                     aria-label="Seleziona Valore"
+                                     style="margin-left: 3% !important;"
+                                     [required]="co.mandatory">
+                        <mat-radio-button *ngFor="let option of co.tabgenValueFilter"
+                                          [value]="option"
+                                          class="radio-fix">
+                            {{option}}
+                        </mat-radio-button>
+                    </mat-radio-group>
+                </div>
+            </div>
+
+            <!--MULTI FILTER -->
+            <div *ngIf="co.filterType=='Multi'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field class="fix3">
+                        <mat-label>Seleziona Valori</mat-label>
+                        <mat-select [(ngModel)]="co.multiValues" [disabled]="isDisable" [disabled]="isDisable" multiple
+                                    [required]="co.mandatory">
+                            <mat-option *ngFor="let topping of co.tabgenValueFilter"
+                                        [value]="topping">{{topping}}</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            </div>
+
+            <!--CAMPI FILTER-->
+            <div *ngIf="co.filterType=='Campi'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field class="example-full-width">
+                        <input [(ngModel)]="co.singleValue" [disabled]="isDisable" [matAutocomplete]="auto"
+                               aria-label="Number" matInput
+                               placeholder="Seleziona Valore" type="text"
+                               [required]="co.mandatory">
+                        <mat-autocomplete #auto="matAutocomplete">
+                            <mat-option *ngFor="let option of options" [value]="option">
+                                {{option}}
+                            </mat-option>
+                        </mat-autocomplete>
+                    </mat-form-field>
+                </div>
+            </div>
+
+            <!--LOOKUP FILTER -->
+            <div *ngIf="co.filterType=='Lookup'">
+                <div class="my-toolbar">
+                    <mat-toolbar>{{co.name}}</mat-toolbar>
+                </div>
+                <div class="fix-contaioner">
+                    <mat-form-field class="example-full-width">
+                        <input [(ngModel)]="co.singleValue" [disabled]="isDisable" [matAutocomplete]="auto"
+                               aria-label="Number" matInput
+                               placeholder="Seleziona Valore" type="text"
+                               [required]="co.mandatory">
+                        <mat-autocomplete #auto="matAutocomplete">
+                            <mat-option *ngFor="let option of options" [value]="option">
+                                {{option}}
+                            </mat-option>
+                        </mat-autocomplete>
+                    </mat-form-field>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <div *ngFor="let coc of flowConfigurationFilterFieldsS; index as i">
+            <!--CHIPS -->
+            <div *ngIf="coc.filterType=='Chips'">
+                <mat-chip-list #chipList multiple="false" style="text-align:center;" [disabled]="isDisable">
+                    <mat-chip *ngFor="let stat of states" [value]="stat.code" [selected]="stat.selected"
+                              (click)="onSelectState(coc, stat,i)">
+                        {{stat.name}}
+                    </mat-chip>
+                </mat-chip-list>
+            </div>
+        </div>
+</div>
+
+<div *ngIf="showLoadingIndicator" class="mask">
+    <div *ngIf="showLoadingIndicator" class="lds-roller">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+</div>
+

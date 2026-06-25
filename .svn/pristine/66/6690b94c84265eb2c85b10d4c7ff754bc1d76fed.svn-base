@@ -1,0 +1,160 @@
+<div class="mat-dig-content">
+  <mat-dialog-content > 
+
+    <mat-form-field appearance="legacy" style="width: 45%;">
+        <mat-label>Nome</mat-label>
+        <input matInput type="text" [(ngModel)]="anagraficaAssistitoDTO.nome" >
+      </mat-form-field>
+      &nbsp;
+
+      <mat-form-field appearance="legacy" style="width: 45%;">
+        <mat-label>Cognome</mat-label>
+        <input matInput [(ngModel)]="anagraficaAssistitoDTO.cognome" name="cognome">
+      </mat-form-field> 
+      &nbsp;
+
+      <mat-form-field appearance="legacy" style="width: 45%;">
+        <mat-label>Data Nascita</mat-label>
+        <input matInput readonly placeholder="Data Nascita" [style.width.px]="150" [matDatepicker]="picker1" 
+        [(ngModel)]="anagraficaAssistitoDTO.datanascita" (ngModelChange)="checkLookups()">
+        <mat-datepicker-toggle matSuffix [for]="picker1">
+          <!-- <mat-icon matDatepickerToggleIcon>keyboard_arrow_down</mat-icon> -->
+        </mat-datepicker-toggle>
+        <mat-datepicker #picker1 startView="year" [startAt]="startDate" ></mat-datepicker>
+      </mat-form-field> 
+      &nbsp;  
+
+      <mat-form-field appearance="legacy" style="width: 45%;" >
+        <mat-label>Comune Nascita</mat-label>
+        <input class="date-input-padding" matInput [(ngModel)]="searchComuneNascitaFormControl.value" [formControl]="searchComuneNascitaFormControl" [matAutocomplete]="autoComuneNascita">
+        <mat-icon matSuffix>search</mat-icon>
+        <mat-autocomplete autoActiveFirstOption #autoComuneNascita="matAutocomplete" [displayWith]="autocompleteDisplayFn"
+                          >
+          <mat-option *ngIf="searchComuneNascitaInProgress && searchComuneNascitaFormControl.value" class="is-loading" [disabled]="true">
+            Ricerca in corso...
+          </mat-option>
+          <mat-option *ngIf="!searchComuneNascitaInProgress && searchComuneNascitaFormControl.value && searchComuneNascitaResults.length == 0"
+            class="is-loading" [disabled]="true">Nessun risultato</mat-option>
+          <ng-container *ngIf="!searchComuneNascitaInProgress && searchComuneNascitaFormControl.value">
+            <mat-option *ngFor="let result of searchComuneNascitaResults" [value]="result"
+                        (click)="stopAdvancedFilterEvent = true">
+              {{result.descriptionADVF}}
+            </mat-option>
+          </ng-container>
+        </mat-autocomplete>
+      </mat-form-field>
+
+      &nbsp;
+
+
+      <mat-form-field appearance="legacy" style="width: 45%;">
+        <mat-label>Sesso</mat-label>
+        <mat-select [(ngModel)]="anagraficaAssistitoDTO.sesso">
+          <mat-option *ngFor="let item of anagraficaSesso" [value]="item.codice">
+              {{item.descrizione}}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      &nbsp;
+
+      <mat-form-field appearance="legacy" style="width: 45%;">
+        <mat-label>Codice Fiscale</mat-label>
+        <input matInput [(ngModel)]="anagraficaAssistitoDTO.codiceFiscale">
+      </mat-form-field>
+      &nbsp;
+
+      <mat-form-field appearance="legacy" style="width: 45%;">
+        <mat-label>Codice Paziente</mat-label>
+        <input matInput [(ngModel)]="anagraficaAssistitoDTO.codicePaziente">
+      </mat-form-field>
+      &nbsp;
+
+      <mat-form-field appearance="legacy" style="width: 45%;" >
+        <mat-label>Comune Residenza</mat-label>
+        <input class="date-input-padding" matInput [(ngModel)]="searchComuneResidenzaFormControl.value" [formControl]="searchComuneResidenzaFormControl" [matAutocomplete]="autoComuneResidenza">
+        <mat-icon matSuffix>search</mat-icon>
+        <mat-autocomplete autoActiveFirstOption #autoComuneResidenza="matAutocomplete" [displayWith]="autocompleteDisplayFn"
+                          >
+          <mat-option *ngIf="searchComuneResidenzaInProgress && searchComuneResidenzaFormControl.value" class="is-loading" [disabled]="true">
+            Ricerca in corso...
+          </mat-option>
+          <mat-option *ngIf="!searchComuneResidenzaInProgress && searchComuneResidenzaFormControl.value && searchComuneResidenzaResults.length == 0"
+            class="is-loading" [disabled]="true">Nessun risultato</mat-option>
+          <ng-container *ngIf="!searchComuneResidenzaInProgress && searchComuneResidenzaFormControl.value">
+            <mat-option *ngFor="let result of searchComuneResidenzaResults" [value]="result"
+                        (click)="stopAdvancedFilterEvent = true">
+              {{result.descriptionADVF}}
+            </mat-option>
+          </ng-container>
+        </mat-autocomplete>
+      </mat-form-field>
+
+      &nbsp;
+
+      <mat-form-field appearance="legacy" style="width: 45%;" >
+        <mat-label>Nazionalit&agrave;</mat-label>
+        <input class="date-input-padding" matInput [(ngModel)]="searchNazionalitaFormControl.value" [formControl]="searchNazionalitaFormControl" [matAutocomplete]="autoNazionalita">
+        <mat-icon matSuffix>search</mat-icon>
+        <mat-autocomplete autoActiveFirstOption #autoNazionalita="matAutocomplete" [displayWith]="autocompleteDisplayFn"
+                          >
+          <mat-option *ngIf="searchNazionalitaInProgress && searchNazionalitaFormControl.value" class="is-loading" [disabled]="true">
+            Ricerca in corso...
+          </mat-option>
+          <mat-option *ngIf="!searchNazionalitaInProgress && searchNazionalitaFormControl.value && searchNazionalitaResults.length == 0"
+            class="is-loading" [disabled]="true">Nessun risultato</mat-option>
+          <ng-container *ngIf="!searchNazionalitaInProgress && searchNazionalitaFormControl.value">
+            <mat-option *ngFor="let result of searchNazionalitaResults" [value]="result"
+                        (click)="stopAdvancedFilterEvent = true">
+              {{result.descriptionADVF}}
+            </mat-option>
+          </ng-container>
+        </mat-autocomplete>
+      </mat-form-field>
+
+      &nbsp;
+
+      <mat-form-field appearance="legacy" style="width: 45%;" >
+        <mat-label>Asl Residenza</mat-label>
+        <input class="date-input-padding" matInput [(ngModel)]="searchAslResidenzaFormControl.value" [formControl]="searchAslResidenzaFormControl" [matAutocomplete]="autoAslResidenza">
+        <mat-icon matSuffix>search</mat-icon>
+        <mat-autocomplete autoActiveFirstOption #autoAslResidenza="matAutocomplete" [displayWith]="autocompleteDisplayFn"
+                          >
+          <mat-option *ngIf="searchAslResidenzaInProgress && searchAslResidenzaFormControl.value" class="is-loading" [disabled]="true">
+            Ricerca in corso...
+          </mat-option>
+          <mat-option *ngIf="!searchAslResidenzaInProgress && searchAslResidenzaFormControl.value && searchAslResidenzaResults.length == 0"
+            class="is-loading" [disabled]="true">Nessun risultato</mat-option>
+          <ng-container *ngIf="!searchAslResidenzaInProgress && searchAslResidenzaFormControl.value">
+            <mat-option *ngFor="let result of searchAslResidenzaResults" [value]="result"
+                        (click)="stopAdvancedFilterEvent = true">
+              {{result.descriptionADVF}}
+            </mat-option>
+          </ng-container>
+        </mat-autocomplete>
+      </mat-form-field>
+
+   </mat-dialog-content>
+
+   <mat-form-field appearance="legacy" style="width: 45%;">
+    <mat-label>Abilitazione</mat-label>
+    <mat-select [(ngModel)]="anagraficaAssistitoDTO.abilitazione">
+      <mat-option *ngFor="let item of anagraficaAbilitazione" [value]="item.codice">
+          {{item.descrizione}}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>
+
+
+<div class = "mat-dialog-actions">
+  <mat-dialog-actions>
+    <button mat-raised-button color = "primary"  (click) = "filterAnagraficaAssistitoData(anagraficaAssistitoDTO)" cdkFocusInitial>Salva</button>
+    <button mat-raised-button color = "warn"     (click) = "onClose()" >Annulla</button>
+  </mat-dialog-actions>
+</div>
+
+
+
+
+

@@ -1,0 +1,317 @@
+<div class="flow-extract-field">
+    <div class="filtri">
+         <mat-form-field>
+            <mat-label>ID Estrazione</mat-label>
+            <input (keydown.enter)="startSearch()" [(ngModel)]="extraction_id" matInput placeholder="ID Estrazione" />
+        </mat-form-field>
+        <mat-form-field>
+            <mat-label>Flussi</mat-label>
+            <mat-select [(ngModel)]="flow_id">
+                <mat-option value=""></mat-option>
+                <mat-option (onSelectionChange)="setLastVersion(flow.id);" *ngFor="let flow of flows" [value]=flow.id>
+                    {{flow.name}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+            <mat-label>Versioni</mat-label>
+            <mat-select [(ngModel)]="version_id">
+                <mat-option value=""></mat-option>
+                <mat-option *ngFor="let version of versions" [value]=version.id>
+                    {{version.name}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+            <mat-label>Stato</mat-label>
+            <mat-select [(ngModel)]="status">
+                <mat-option value=""></mat-option>
+                <mat-option *ngFor="let status of statuss" [value]=status>
+                    {{status}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+            <mat-label>Tipo Schedulazione</mat-label>
+            <mat-select [(ngModel)]="schedulingType">
+                <mat-option value=""></mat-option>
+                <mat-option *ngFor="let schedulingType of schedulingTypes" [value]=schedulingType[0]>
+                    {{schedulingType[1]}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+        <mat-form-field class="checkbox">
+            <input class="fixHidden" matInput>
+                <mat-checkbox
+                [(ngModel)]="drg"
+                [checked]="ckdDrg">
+                    DRG 
+                </mat-checkbox>
+        </mat-form-field>
+        <button (click)="startSearch()" mat-button matTooltip="Cerca">
+            <mat-icon>search</mat-icon>
+        </button>
+        <button mat-button (click)="resetSearch()" matTooltip="Resetta filtri">
+            <mat-icon>delete_sweep</mat-icon>
+        </button>
+    </div>
+
+<div class="example-container">
+    <div class="flowviewreps">
+        <table #table (matSortChange)="sortData($event)" [dataSource]="dataSource" mat-table
+            matSort>
+
+            <!--- Note that these columns can be defined in any order.
+                The actual rendered columns are set as a property on the row definition" -->
+            <!-- Checkbox Column -->
+            <ng-container matColumnDef="select">
+                <th mat-header-cell *matHeaderCellDef sticky>
+                    <mat-checkbox (change)="$event ? masterToggle() : null"
+                        [checked]="selection.hasValue() && isAllSelected()"
+                        [indeterminate]="selection.hasValue() && !isAllSelected()">
+                    </mat-checkbox>
+                </th>
+                <td mat-cell *matCellDef="let row" (click)="$event.stopPropagation()">
+                    <mat-checkbox (click)="$event.stopPropagation()" (change)="$event ? selection.toggle(row) : null"
+                        [checked]="selection.isSelected(row)" [disabled]="row.consolidata || (row.status === 'IN_CORSO')">
+                        <!-- *ngIf="!row.excluded" -->
+                    </mat-checkbox>
+                </td>
+            </ng-container>
+            <!-- Id Estrazione Column -->
+            <ng-container matColumnDef="id">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ID </th>
+                <td *matCellDef="let element" mat-cell (click)="$event.stopPropagation()"> {{element.id}} </td>
+            </ng-container>
+
+            <!-- Scheduled Column -->
+            <ng-container matColumnDef="schedulingType">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tipologia</th>
+                <td *matCellDef="let element" mat-cell>
+                    <mat-icon matTooltip="{{schedulationTootlip(element.schedulingType)}}">{{schedulationIcon(element.schedulingType)}}</mat-icon>
+                    <mat-icon *ngIf="element.drg == true" matTooltip="Drg">attach_money</mat-icon>
+                </td>
+            </ng-container>
+            
+            <ng-container matColumnDef="requester">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;Utente</th>
+                <td *matCellDef="let element" mat-cell>
+                    <mat-icon tooltip={{element.requester}}>person</mat-icon>
+                </td>
+
+            </ng-container>
+
+
+            <!-- Flow Column -->
+            <ng-container matColumnDef="flow">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flusso</th>
+                <td tooltip={{getToolTipFilter(element)}} *matCellDef="let element" mat-cell> {{element.flow.name}} </td>
+            </ng-container>
+
+            <!-- Version Column -->
+            <ng-container matColumnDef="version">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Versione</th>
+                <td *matCellDef="let element" mat-cell> {{element.version.description}} </td>
+            </ng-container>
+
+            <!-- Record Column -->
+            <ng-container matColumnDef="record">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pratiche Estratte</th>
+                <td *matCellDef="let element" mat-cell> {{element.record}} </td>
+            </ng-container>
+
+            <!-- Data Request Column -->
+            <ng-container matColumnDef="requestDate">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Data Richiesta</th>
+                <td *matCellDef="let element" mat-cell> {{convertData(element.requestDate)}}</td>
+            </ng-container>
+
+            <!-- Data Start Column -->
+            <ng-container matColumnDef="startExtractionDate">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Inizio Estrazione</th>
+                <td *matCellDef="let element" mat-cell> {{ convertData(element.startExtractionDate)}} </td>
+            </ng-container>
+
+            <!-- Data End Column -->
+            <ng-container matColumnDef="endExtractionDate">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Fine Estrazione</th>
+                <td *matCellDef="let element" mat-cell> {{convertData(element.endExtractionDate)}} </td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Stato Richiesta</th>
+                <td *matCellDef="let element" mat-cell>
+                    <mat-icon (click)="$event.stopPropagation();showErrorDetails(element.flowErrorDetails, element.status)"
+                        [ngClass]="{'termiantako':element.status === 'TERMINATA_KO'}"
+                        matTooltip="{{statusTooltip(element.status)}}">{{statusIcon(element.status)}}</mat-icon>
+                    <div *ngIf="element.status === 'TERMINATA_KO'" class="number-circle"
+                        (click)="$event.stopPropagation();showErrorDetails(element.flowErrorDetails, element.status)">
+                        {{errorDetails(element.flowErrorDetails)}}
+                    </div>
+                </td>
+            </ng-container>
+
+            <!-- Status Validation Column -->
+            <ng-container matColumnDef="validationStatus">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Stato Estrazione</th>
+                <td *matCellDef="let element" mat-cell>
+                    <mat-icon matTooltip="{{validationStatusTooltip(element.validationStatus)}}">
+                        {{validationStatusIcon(element.validationStatus)}}</mat-icon>
+                </td>
+            </ng-container>
+
+            <ng-container matColumnDef="validationStatusDrl">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Stato Validazione record</th>
+                <td *matCellDef="let element" mat-cell>
+                    <mat-icon matTooltip="{{validationStatusTooltipDrl(element.validationStatusDrl)}}">
+                        {{validationStatusIconDrl(element.validationStatusDrl)}}</mat-icon>
+                </td>
+            </ng-container>
+
+            <!-- Change Status End Column -->
+            <ng-container matColumnDef="consol">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Consolidamento</th>
+                <td *matCellDef="let element" mat-cell>
+                    <button (click)="$event.stopPropagation();changeStatus(element,false) "
+                        *ngIf="element.consolidata==true"
+                            [disabled]="isMonitorSDO(element) || element.status != 'TERMINATA_OK' || element.record==0 || !isProfilConsol(element)"
+                            mat-icon-button
+                            [matTooltip]="loadTooltipConsol(element)">
+                        <mat-icon>lock</mat-icon>
+                    </button>
+                    <button [disabled]="isMonitorSDO(element) || element.status != 'TERMINATA_OK' || element.record==0 || !isProfilConsol(element)"
+                        (click)="$event.stopPropagation();changeStatus(element,false)"
+                        *ngIf="(element.consolidata==false || element.consolidata == null) && (element.drg == false || element.drg == null)"
+                            mat-icon-button
+                        [matTooltip]="loadTooltipConsol(element)">
+                        <mat-icon>lock_open</mat-icon>
+                    </button>
+                    <mat-icon *ngIf="element.drg == true" (click)="$event.stopPropagation()" matTooltip="Estrazione di tipo DRG">block</mat-icon>
+                </td>
+                <!-- <td *ngIf="element.drg" *matCellDef="let element" mat-cell matTooltip="Estrazione di tipo DRG">
+                        <mat-icon>block</mat-icon>
+                </td> -->
+            </ng-container>
+
+
+            <ng-container matColumnDef="regionValidationStatus">
+                <th *matHeaderCellDef mat-header-cell sticky mat-sort-header> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Validazione Regionale</th>
+                <td *matCellDef="let element" mat-cell>
+                    <button (click)="$event.stopPropagation();goDashboardActivity(element)"
+                        [disabled]="element.status != 'TERMINATA_OK' || element.record==0"
+                        mat-icon matTooltip=""
+                        mat-icon-button>
+                        <mat-icon matTooltip="{{regionValidationStatusTooltip(element.regionValidationStatus, element.lastUploadReturnsRequest)}}">
+                            {{regionValidationStatusIcon(element.regionValidationStatus, element.lastUploadReturnsRequest)}}</mat-icon>
+                    </button>
+                </td>
+            </ng-container>
+
+            <ng-container matColumnDef="download">
+                <th *matHeaderCellDef mat-header-cell sticky> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Download </th>
+                <td *matCellDef="let element" mat-cell>
+                    <button (click)="$event.stopPropagation()"
+                        [disabled]="isMonitorSDO(element) || element.status != 'TERMINATA_OK' || element.record==0" [matMenuTriggerFor]="menu"
+                        aria-label="Example icon-button with a menu" mat-icon-button>
+                        <mat-icon>cloud_download</mat-icon>
+                    </button>
+                    <mat-menu #menu="matMenu">
+
+                        <button (click)="downloadLOG(element)" [disabled]="element.validationStatus != 'NOT_VALID'" mat-menu-item>
+                            <mat-icon>list</mat-icon>
+                            <span>Download Log</span>
+                        </button>
+                        <button (click)="downloadXML(element)" mat-menu-item>
+                            <mat-icon>list</mat-icon>
+                            <span>Download File</span>
+                        </button>
+                    </mat-menu>
+            </ng-container>
+
+
+            <!-- Button Column -->
+
+            <ng-container matColumnDef="button_plus">
+                <th *matHeaderCellDef mat-header-cell sticky></th>
+                <td *matCellDef="let element" mat-cell>
+                    <button (click)="$event.stopPropagation()" [matMenuTriggerFor]="menu" [disabled]="element.record==0"
+                        aria-label="Example icon-button with a menu" mat-icon-button>
+                        <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #menu="matMenu">
+                        <button (click)="startExtraction(element)"
+                            [disabled]="element.schedulingType != 'MANUALLY' || element.status != 'RICHIESTA'"
+                            mat-menu-item>
+                            <mat-icon>vertical_align_bottom</mat-icon>
+                            <span>Avvia Estrazione</span>
+                        </button>
+                        <button [disabled]="element.schedulingType != 'PERIODICALLY'" mat-menu-item style="cursor:default">
+                            <mat-icon>schedule</mat-icon>
+                            <span>Prossima Estrazione: {{convertData(element.schedulingNextTime)}}</span>
+                        </button>
+                        <button (click)="goViewActivity(element)" mat-menu-item
+                            [disabled]="element.status != 'TERMINATA_OK' || element.record == 0">
+                            <mat-icon>list</mat-icon>
+                            <span>Visualizza Dati</span>
+                        </button>
+                        <!--     <button (click)="startScheduling(element)" mat-menu-item>
+                                <mat-icon>query_builder</mat-icon>
+                                <span>Schedulazione</span>
+                            </button>-->
+                        <button [disabled]="element.status != 'TERMINATA_OK' || element.validationStatus == 'NOT_VALID' || element.record == 0" (click)="fileInput.click()" mat-menu-item>
+                            <input hidden type="file" id="uploadReturnsInput" #fileInput
+                                (change)="uploadReturns($event.target, element.id)" />
+                            <mat-icon>publish</mat-icon>
+                            <span>Upload Ritorno</span>
+                        </button>
+                        <button (click)="killExtraction(element)" [disabled]="element.status != 'IN_CORSO'" mat-menu-item>
+                            <mat-icon>not_interested</mat-icon>
+                            <span>Blocca Estrazione</span>
+                        </button>
+                        <!-- <button *ngIf ="element.flow.code == 'SDOIOR' && element.drg == false" (click)="simulateFlow(element)" [disabled]="element.status != 'TERMINATA_OK'" mat-menu-item>
+                            <mat-icon>attach_money</mat-icon>
+                            <span>Calcolo DRG</span>
+                        </button> -->
+                        <button *ngIf ="element.drg == true" (click)="goToViewDrg(element)" [disabled]="element.status != 'TERMINATA_OK'" mat-menu-item>
+                            <mat-icon>attach_money</mat-icon>
+                            <span>DRG</span>
+                        </button>
+                        <button *ngIf="!isMonitorSDO(element)" (click)="downloadFlow(element)" [disabled]="element.status != 'TERMINATA_OK'" mat-menu-item>
+                            <mat-icon>unarchive</mat-icon>
+                            <span>Simula flusso</span>
+                        </button>
+                        <!--             <button (click)="startCertification(element)" disabled mat-menu-item>
+                                        <mat-icon>spellcheck</mat-icon>
+                                        <span>Consolida</span>
+                                    </button>
+                                    <button (click)="startCertification(element)" disabled mat-menu-item>
+                                        <mat-icon>undo</mat-icon>
+                                        <span>Annulla Consolidamento</span>
+                                    </button>-->
+                    </mat-menu>
+            </ng-container>
+            <tr *matHeaderRowDef="displayedColumns; sticky: true" mat-header-row></tr>
+            <tr (click)="goEditActivity(row)" *matRowDef="let row; columns: displayedColumns;" mat-row></tr>
+        </table>
+    </div>
+</div>
+    <mat-paginator #paginator
+            (page)="getServerData($event)" [length]="totalItems" [pageSizeOptions]="[5, 10, 25, 100]"
+        [pageSize]="10">
+    </mat-paginator>
+
+</div>
+
+<div *ngIf="showLoadingIndicator" class="mask">
+    <div *ngIf="showLoadingIndicator" class="lds-roller">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+</div>

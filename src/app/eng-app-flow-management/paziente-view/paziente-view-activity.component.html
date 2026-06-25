@@ -1,0 +1,97 @@
+<div class="background">      
+        
+    <mat-toolbar color="primary">
+        <!-- <span>ASSISTITO: {{name}} {{surname}} {{taxcode}} {{dataNascitaView}}</span> -->
+        <span>FLUSSO: {{flow.name}} PERIODO: {{elements["MESE"]}}/{{elements["ANNO"]}}</span>  
+    </mat-toolbar>
+    
+    <div class="example-container">
+        
+        <table mat-table [dataSource]="dataSource">
+            
+            <div *ngFor="let field of colMap; index as j ">
+                
+                <div *ngIf="field.name != 'LINK' && field.name != 'FLOWVIEW'">
+                    <ng-container [matColumnDef]="field.name">
+                        <th mat-header-cell *matHeaderCellDef sticky> &nbsp;&nbsp;&nbsp;{{field.description}}&nbsp;&nbsp;&nbsp; </th>
+                        <td mat-cell *matCellDef="let element"> {{element[field.name]}} </td>
+                    </ng-container>
+                </div>
+
+                <div *ngIf="field.name == 'LINK'">
+                    <ng-container [matColumnDef]="field.name">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let element"> 
+                            <button mat-icon-button matTooltip="Passaggio al Verticale" (click)= "openExternalActivity(element)">
+                                <mat-icon>open_in_new</mat-icon>
+                            </button>
+                        </td>
+                    </ng-container>
+                </div>
+
+                <div *ngIf="field.name == 'FLOWVIEW'">
+                    <ng-container [matColumnDef]="field.name">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let element"> 
+                            <button mat-icon-button matTooltip="Visualizza Flusso" (click)= "goToFlowView(element)">
+                                <mat-icon>cached</mat-icon>
+                            </button>
+                        </td>
+                    </ng-container>
+                </div>
+                    
+            </div>
+
+            <!-- <div *ngFor="let field of displayedColumns; index as j ">
+                
+                <div *ngIf="field != 'LINK' && field != 'FLOWVIEW'">
+                    <ng-container [matColumnDef]="field">
+                        <th mat-header-cell *matHeaderCellDef sticky> &nbsp;&nbsp;&nbsp;{{field}}&nbsp;&nbsp;&nbsp; </th>
+                        <td mat-cell *matCellDef="let element"> {{element[field]}} </td>
+                    </ng-container>
+                </div>
+
+                <div *ngIf="field == 'LINK'">
+                    <ng-container [matColumnDef]="field">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let element"> 
+                            <button mat-icon-button matTooltip="Passaggio al Verticale" (click)= "openExternalActivity(element)">
+                                <mat-icon>open_in_new</mat-icon>
+                            </button>
+                        </td>
+                    </ng-container>
+                </div>
+
+                <div *ngIf="field == 'FLOWVIEW'">
+                    <ng-container [matColumnDef]="field">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let element"> 
+                            <button mat-icon-button matTooltip="Visualizza Flusso" (click)= "goToFlowView(element)">
+                                <mat-icon>cached</mat-icon>
+                            </button>
+                        </td>
+                    </ng-container>
+                </div>
+                    
+            </div> -->
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+
+            <tr mat-row *matRowDef="let element; columns: displayedColumns;" class="example-element-row"> </tr>
+                
+        </table>
+
+    </div>
+
+    <div *ngIf="showLoadingIndicator" class="mask">
+        <div *ngIf="showLoadingIndicator" class="lds-roller">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+    </div>

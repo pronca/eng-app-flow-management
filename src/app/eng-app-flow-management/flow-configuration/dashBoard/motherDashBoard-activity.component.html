@@ -1,0 +1,103 @@
+<div class="background card-wrapper">
+
+    <mat-toolbar>
+
+
+        <eng-select-field fxFlex='20' label='YEAR_FLW' valueSet="year-value-set@local"  [defaultValue]=valueFilterYear
+        (change) = "serachDashY($event)" >
+        </eng-select-field>
+
+        <eng-select-field fxFlex='20' label='FROM_MONTH_FLW_DASH' valueSet="month-value-set@local" [defaultValue]=valueFilterMonthFrom
+        (change) = "serachDashMFrom($event)"  >
+        </eng-select-field>
+
+
+        <eng-select-field fxFlex='20' label='TO_MONTH_FLW_DASH' valueSet="month-value-set@local" [defaultValue]=valueFilterMonthTo
+        (change) = "serachDashMTo($event)" >
+        </eng-select-field>
+
+
+        <button mat-button (click)="startSearch()" matTooltip="Cerca">
+            <mat-icon>search</mat-icon>
+        </button>
+
+
+    </mat-toolbar>
+
+
+
+    <div class="row"   *ngFor="let dash of dashboard; index as i">
+
+       
+    
+
+        <div  class="fool padding-label5 padding-label4"  *ngIf="visible">
+            <div  class="card card-chart" (click)="openChildDashboard(dash.flow)" style="cursor:pointer">
+                <div style="display: block;">
+                    <canvas baseChart [datasets]="labelMFL[i]" [labels]="lineChartLabels" [options]="lineChartOptions"
+                        [chartType]="lineChartType"  [colors]="_lineChartColors2[i]"></canvas>
+                </div>           
+                <div class="card-body">
+                    <h4 class="card-title"> <br>
+                        <div class = "titletext">Flusso {{dash.flow}} </div> 
+
+                   <div class= "prebox">     <div matTooltip="Percentuale incremento rispetto all'anno precedente " class="box blue"></div>  {{dash.percentPratiche}} <i [style.color] = "dash.countPraticheThisYear > dash.countPraticheLastYear ? 'green' : 'red'" class="material-icons">{{dash.arrowPratiche}}</i> </div>
+                     <div class= "prebox">  <div matTooltip="Percentuale incremento rispetto all'anno precedente "  class="box green"></div>  {{dash.percentRegionPratiche}} <i [style.color] = "dash.countPrtaicheRegioneThisYear > dash.countPrtaicheRegioneLastYear ? 'green' : 'red'" class="material-icons">{{dash.arrowRegionPratiche}}</i> </div></h4>
+
+                   
+                        <p class="card-category">Numero Pratiche </p>
+                </div>
+                <div class="card-footer">
+                    <div class="stats">
+                        <i class="material-icons">access_time</i>ultimo aggiornamento: {{dash.lastFinalUpdate}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+                  
+        <div class="fool  padding-label2 padding-label4"  *ngIf="visible">
+            <div class="card card-chart" (click)="openChildDashboard(dash.flow)" style="cursor:pointer">
+                <div style="display: block;">
+                    <canvas baseChart [datasets]="labelMFL2[i]" [labels]="lineChartLabels2" [options]="lineChartOptions2"
+                        [chartType]="lineChartType2"  [colors]="_lineChartColors[i]"></canvas>
+                </div>
+                <div class="card-body">
+                    <h4 class="card-title"> <br>
+                        <div class = "titletext">Flusso {{dash.flow}} </div> 
+
+                        <div class= "prebox">     <div matTooltip="Percentuale incremento rispetto all'anno precedente" class="box blue"></div>  {{dash.percentTotal}}  <i [style.color] = "dash.totalThisYear > dash.totalLastYear ? 'green' : 'red'" class="material-icons">{{dash.arrowTotal}}</i> </div>
+                          <div class= "prebox">  <div matTooltip="Percentuale incremento rispetto all'anno precedente "  class="box green"></div>  {{dash.percentRegionTotal}} <i [style.color] = "dash.totalRegioneThisYear > dash.totalRegioneLastYear ? 'green' : 'red'" class="material-icons">{{dash.arrowRegionTotal}}</i> </div></h4>
+     
+                        
+                    <p class="card-category">Ricavi Prodotti</p>
+                </div>
+                <div class="card-footer">
+                    <div class="stats">
+                        <i class="material-icons">access_time</i>ultimo aggiornamento: {{dash.lastFinalUpdate}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+      
+    
+</div>
+
+
+
+<div class="mask" *ngIf="showLoadingIndicator">
+    <div class="lds-roller" *ngIf="showLoadingIndicator">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+    </div>
+
+

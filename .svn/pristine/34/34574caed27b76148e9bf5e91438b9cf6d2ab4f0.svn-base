@@ -1,0 +1,2 @@
+<div *ngIf = "isVisible()">{{header}} <mat-progress-bar class= "app-progress-bar" *ngIf = "isVisibles" mode="indeterminate" ></mat-progress-bar>
+</div>
