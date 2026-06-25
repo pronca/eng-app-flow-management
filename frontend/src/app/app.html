@@ -1,0 +1,15 @@
+<main class="container">
+  <h1>{{ title }}</h1>
+  <p class="subtitle">Monitor frontend workflow statuses.</p>
+
+  <section aria-label="Flow list">
+    <ul class="flow-list">
+      @for (flow of flows; track flow.name) {
+        <li class="flow-item">
+          <span class="flow-name">{{ flow.name }}</span>
+          <span class="flow-status">{{ flow.status }}</span>
+        </li>
+      }
+    </ul>
+  </section>
+</main>
