@@ -1,0 +1,1852 @@
+import {Component, EventEmitter, HostBinding, HostListener, Output, ViewChild} from "@angular/core";
+import * as moment_ from 'moment';
+import {
+    ActivityActionType,
+    ActivityManager,
+    Choice,
+    EditActivityComponent,
+    EditActivityStartingParams,
+    Promises,
+    ResumeOperation,
+    SearchFilters
+} from "eng-app";
+import {FlowConfigurationService} from "../../flow-configuration/flow-configuration.service";
+import {
+    FlowExport,
+    FlowNative,
+    FmFlow,
+    Header,
+    MachineState,
+    UploadReturnsRequest,
+    Version
+} from "../../flow-configuration/flow-configuration.model";
+import {MatDialog, MatSort, MatTableDataSource} from "@angular/material";
+import {DialogContentExampleDialog} from '../../dialog-box/dialog-content-example-dialog';
+import Utils from '../../flow-configuration/flow-configuration.utils';
+import {Subscription, timer} from 'rxjs';
+import {SelectionModel} from '@angular/cdk/collections';
+import {MatPaginator} from "@angular/material/paginator";
+import { PopupUser } from '../../user-popup/popup-user';
+
+const moment = moment_;
+
+@Component({
+    selector: 'flow-output-search-activity',
+    templateUrl: './flow-output-search-activity.component.html',
+    styleUrls: ['./flow-output-search-activity.components.scss']
+})
+
+export class FlowOutputSearchActivityComponent extends EditActivityComponent {
+    refreshSubscription: Subscription;
+    refreshInterval = 60000; // default ogni 60 secondi
+
+    filterGlob: SearchFilters = new SearchFilters();
+    totalItems: number;
+    blockLeft: boolean = true;
+    blockRight: boolean;
+    pageIndexStore: number = 1;
+    showLoadingIndicator: boolean = true;
+    choice: Choice = {
+        text: 'OK',
+        cssClass: '{text-align:center;}'
+    };
+    choices: Choice[] = [];
+    flows: FlowNative[] = [];
+    versions: Version[] = [];
+    flow_id: string = "";
+    version_id: string = "";
+    extraction_id: string = "";
+    status: string = "";
+    validationStatus: string = "";
+    regionValidationStatus : string = "";
+    schedulingType: string = "";
+    statuss: string[] = [
+        MachineState.RICHIESTA,
+        MachineState.ANNULLATA,
+        MachineState.IN_CORSO,
+        MachineState.TERMINATA_KO,
+        MachineState.TERMINATA_OK];
+    displayedColumns: string[] = ['select', 'id', 'schedulingType', 'requester', 'flow', 'version', 'record', 'requestDate', 'startExtractionDate', 'endExtractionDate', 'status', 'validationStatus', 'validationStatusDrl', 'consol', 'regionValidationStatus', 'download', 'button_plus'];
+    dataSource = new MatTableDataSource<FlowExport>();
+    selection = new SelectionModel<FlowExport>(true, []);
+    formFlow: FmFlow;
+    schedulingTypes: any[] = [
+        ["MANUALLY", "MANUALE"],
+        ["ONE_TIME", "UNA VOLTA"],
+        ["PERIODICALLY", "PERIODICA"]
+    ];
+    fmFlow: FmFlow[] = [];
+    flow: FlowNative;
+    file: any = [];
+    version: Version = new Version();
+    files: any = [];
+    editFlow: boolean = false;
+    opt_id: string;
+    header: Header = new Header();
+    utils = new Utils();
+    disableClick: boolean = false;
+    sub: Subscription = new Subscription();
+    source = timer(10000, 10000);
+    val: any;
+    drg: boolean;
+    ckdDrg: boolean = false;
+
+    @ViewChild('paginator',{ static: true }) paginator: MatPaginator;
+    @ViewChild(MatSort,{ static: true }) sort: MatSort;
+    @Output() onFileDropped = new EventEmitter<any>();
+    @HostBinding('style.background-color') background;
+    @HostBinding('style.opacity') opacity = '1';
+    constructor(
+        public dialog: MatDialog,
+        private flowConfigurationService: FlowConfigurationService,
+        private activityManager: ActivityManager,
+    ) {
+        super();
+    }
+
+    /**
+     *
+     */
+    ngOnDestroy() {
+        if (this.refreshSubscription) {
+            this.refreshSubscription.unsubscribe();
+        }
+    }
+
+    /**
+     *
+     * @param operation
+     */
+    onResume(operation?: ResumeOperation) {
+        // this.ngOnInit();
+        // super.onResume(operation);
+        this.disableClick = false;
+        this.retrieveExtraction(this.filterGlob, false);
+        this.startAutoRefresh();
+    }
+
+    startAutoRefresh() {
+        if (this.refreshSubscription) {
+            this.refreshSubscription.unsubscribe();
+        }
+
+        this.refreshSubscription = timer(this.refreshInterval, this.refreshInterval).subscribe(() => {
+            // refresh silenzioso — senza spinner
+            this.retrieveExtraction(this.filterGlob, true);
+        });
+    }
+
+    /**
+     * retrieveExtraction
+     * Retrive Object ExtractionDTO
+     */
+    retrieveExtractionFormList(extractIds: any) {
+        this.showLoadingIndicator = true;
+        //this.flowConfigurationService.getExportingRequest(flow, version, extraction, status, schedulingType).then(response => {
+        this.flowConfigurationService.getExportingRequest(extractIds).then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    this.dataSource = new MatTableDataSource(response.opTargetObject.items);
+                    //this.dataSource = response.opTargetObject.items;
+                    // recupera la descrizione del tipo di schedulazione
+                    if (this.dataSource.data) {
+                        for (let i = 0; i < this.dataSource.data.length; i++) {
+                            //   this.changeLock.set(this.dataSource[i].id, this.dataSource[i].consolidata);
+                            let stype = this.dataSource.data[i].schedulingType;
+                            //for(let type in this.schedulingTypes) {
+                            for (let j = 0; j < this.schedulingTypes.length; j++) {
+                                if (this.schedulingTypes[j][0] === stype) {
+                                    this.dataSource.data[i].schedulingTypeDescr = this.schedulingTypes[j][1];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    this.totalItems = response.opTargetObject.totalItems;
+
+                }
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+            this.showLoadingIndicator = false;
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+            this.showLoadingIndicator = false;
+        });
+
+        return Promise.resolve();
+    }
+
+    /**
+     *
+     */
+    ngOnInit(filter?: SearchFilters) {
+        this.loadRefreshInterval();
+   /*     
+       var ws = new WebSocket('ws://10.240.89.7:15674');
+
+      //  var client = StompJs.over
+
+        console.log(ws.readyState); 
+
+        ws.onopen = () => {
+          console.log('ws opened on browser');
+          ws.send('hello world');
+        }
+    
+        
+        ws.onmessage = (message) => {
+            if(message.data == 'update')
+            this.ngOnInit();
+        }
+
+//        client.connect('guest', 'guest',  ws.onopen, ws.onerror, '/');
+    
+*/
+        //FROM "ConfigurationFilter"
+        this.paginator.pageIndex = 0;
+        this.dataSource = null;
+        let starterParams: any = this.activity.startingParams;
+        if (starterParams && starterParams.ExtractIds && starterParams.from) {
+            this.filterGlob["extractIds"] = starterParams.ExtractIds;
+            this.filterGlob.limit = 10;
+            this.filterGlob.offset = 0;
+            this.retrieveExtractionFormList(this.filterGlob);
+        }
+        //Default
+        else {
+            this.selection.clear();
+            this.pageIndexStore = 0;
+            this.disableClick = false;
+            this.retrieveFlow();
+            this.retrieveVersion();
+
+            if (filter != null) {
+                this.filterGlob["id"] = null;
+                this.filterGlob["extractIds"] = null;
+                this.filterGlob["flowid"] = null;
+                this.filterGlob["versionid"] = null;
+                this.filterGlob["status"] = null;
+                this.filterGlob["validationStatus"] = null;
+                this.filterGlob["schedulingType"] = null;
+                this.filterGlob["drg"] = null;
+                this.filterGlob.limit = 10;
+                this.filterGlob.offset = 0;
+            } else {
+                this.filterGlob["id"] = null;
+                this.filterGlob["extractIds"] = null;
+                this.filterGlob["flowid"] = null;
+                this.filterGlob["versionid"] = null;
+                this.filterGlob["status"] = null;
+                this.filterGlob["validationStatus"] = null;
+                this.filterGlob["schedulingType"] = null;
+                this.filterGlob["drg"] = null;
+                this.filterGlob.limit = 10;
+                this.filterGlob.offset = 0;
+            }
+
+            this.retrieveExtraction(this.filterGlob, false);
+        }
+        super.ngOnInit();
+
+    }
+
+    loadRefreshInterval(): void {
+        let filter: SearchFilters = new SearchFilters();
+        let flowEnabledList: number = 0;
+        filter.tabgenId = "PAGE_REFRESH_INTERVAL";
+        this.flowConfigurationService.tabgenValueListSearchDataProvider(filter)
+            .then(response => {
+                if (response.success) {
+                    if (response.opTargetObject.error) {
+                    } else {
+                    for(let i=0; i<response.opTargetObject.items.length; i++) {
+                        flowEnabledList = response.opTargetObject.items[i]["field1"];
+                    }
+                    if (flowEnabledList !== 0) {
+                        const val = Number(flowEnabledList);
+                        // se il valore è valido, lo usa, altrimenti default
+                        this.refreshInterval = !isNaN(val) && val > 0 ? val : 60000;
+                    }
+                    }
+                } 
+            })
+            .catch(e => {
+                //this.activityManager.engApplication.notifyMessage('Errore in fase di caricamento del parametro PAGE_REFRESH_INTERVAL');
+            }
+        );
+    }
+
+    /**
+     *
+     */
+    initActivityActions() {
+        super.initActivityActions();
+        this.activity.removeActivityAction(EditActivityComponent.SAVE_ACTION);
+
+        this.activity.addActivityAction({
+            actionType: ActivityActionType.MAIN,
+            name: EditActivityComponent.EDIT_ITEM,
+            tooltip: "Nuovo",
+            icon: "add",
+            fn: (activity, action) => {
+                this.activityManager.startChildActivityByName("flow-output.edit", null);
+                return Promise.resolve(null);
+            }
+        });
+
+        this.activity.addActivityAction({
+            actionType: ActivityActionType.MAIN,
+            name: EditActivityComponent.DELETE_ACTION,
+            tooltip: "Cancella",
+            icon: "delete",
+            fn: (activity, action) => {
+                this.deleteExtraction();
+                return Promise.resolve(null);
+            }
+        });
+
+    }
+
+    /**
+     *
+     */
+    startSearch() {
+        this.filterGlob["id"] = this.extraction_id;
+        this.filterGlob["extractIds"] = null;
+        this.filterGlob["flowid"] = this.flow_id;
+        this.filterGlob["versionid"] = this.version_id;
+        this.filterGlob["status"] = this.status;
+        this.filterGlob["validationStatus"] = this.validationStatus;
+        this.filterGlob["schedulingType"] = this.schedulingType;
+        this.filterGlob["drg"] = this.drg;
+        //     console.log(this.status + " " + this.extraction_id + "" +
+        //        this.version_id + "" + this.flow_id + "" + this.schedulingType);
+        this.retrieveExtraction(this.filterGlob, false);
+        //this.retrieveExtraction(this.flow_id, this.version_id, this.extraction_id, this.status, this.schedulingType);
+    }
+
+    /**
+     *
+     */
+    resetSearch() {
+        this.selection.clear();
+
+        this.filterGlob["id"] = null;
+        this.filterGlob["extractIds"] = null;
+        this.filterGlob["flowid"] = null;
+        this.filterGlob["versionid"] = null;
+        this.filterGlob["status"] = null;
+        this.filterGlob["validationStatus"] = null;
+        this.filterGlob["schedulingType"] = null;
+        this.filterGlob["drg"] = null;
+
+        // ✅ reset vero del checkbox
+        this.extraction_id = "";
+        this.drg = false;
+
+        this.flow_id = "";
+        this.version_id = "";
+        this.status = "";
+        this.schedulingType = "";
+
+        this.retrieveFlow();
+        this.retrieveVersion();
+        this.retrieveExtraction(this.filterGlob, false);
+    }
+
+    /**
+     * Button goEditActivity
+     * @param row
+     */
+    goEditActivity(row) {
+        if (!this.disableClick) {
+            // this.sub.unsubscribe();
+            this.disableClick = true;
+            let startingParams: any = {};
+            startingParams.editItem = row;
+            this.activityManager.getCurrentPage().setPageMainObject(startingParams);
+            this.activityManager.startChildActivityByName("flow-output.edit", startingParams);
+        }
+    }
+
+    /**
+     * Button goViewActivity
+     * @param element
+     */
+    goViewActivity(element) {
+        // this.sub.unsubscribe();
+        this.retriveFormFlowAndGoToView(element);
+    }
+
+    /**
+     * Button Consolida Pratiche
+     * @param element
+     */
+    consolida(element) {
+        this.header.label = "Consolidamento in corso...";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+
+        this.flowConfigurationService.checkObsolete(element).then(response => {
+            if (response.success) {
+
+                const result = response.opTargetObject;
+                const rows = result ? result.items : [];
+                const checkType = result ? result.checkType : null;
+
+                if (!rows || rows.length === 0) {
+                    this.startSearch();
+                    this.choices = [];
+                    this.choices.push(this.choice);
+                    var i18n = this.activity.getI18nService();
+                    element.consolidata = true;
+                    this.header.visible = false;
+                    this.header.label = "";
+                    this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+                    return this.activity.getUserConfirmService().askChooseOneMessage(
+                        this.choices,
+                        i18n.instant('!i18n#Consolidamento avvenuto con successo'),
+                        i18n.instant('!i18n#Consolidamento dell\'estrazione ' + element.id + ' avvenuto con successo')
+                    ).then(function () {});
+                }
+
+                let starterParams: EditActivityStartingParams = this.activity.startingParams;
+                starterParams.editItem = new Object();
+                starterParams.editItem.extra = "popup-extr";
+                starterParams.editItem.extractionId = element.id;
+                starterParams.editItem.checkType = checkType;
+
+                let popupMessage = "Alcune pratiche risultano disallineate scegliere Ok per visualizzare il dettaglio";
+
+                if (checkType === "INVIATA") {
+                    popupMessage = "Alcune pratiche risultano già Consolidate in altre estrazioni e in attesa di ritorno regionale scegliere Ok per visualizzare il dettaglio";
+                }
+
+                this.getFlow(element.flow.id, element.version.id, starterParams, popupMessage);
+
+            } else {
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+            }
+        });
+
+        return Promise.resolve();
+    }
+
+
+    sconsolida(element) {
+        this.header.label = "Annulla consolidamento in corso...";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+        this.flowConfigurationService.sconsolida(element).then(response => {
+            if (response.success) {
+                this.startSearch();
+                this.choices = [];
+                this.choices.push(this.choice);
+                var i18n = this.activity.getI18nService();
+                element.consolidata = false;
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+                return this.activity.getUserConfirmService().askChooseOneMessage
+                (this.choices, i18n.instant('!i18n#consolidamento annullato'), i18n.instant('!i18n#Il consolidamento dell\'estrazione ' + element.id + ' è stato annullato')).then(function () {
+
+                });
+            } else {
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+                return this.activity.getUserConfirmService().askChooseOneMessage
+                (this.choices, i18n.instant('!i18n#Annulla consolidamento fallito'), i18n.instant('!i18n# L\'annulla consolidamento dell\'estrazione ' + element.id + ' è fallito')).then(function () {
+
+                });
+
+            }
+        }).catch(() => {
+            this.header.visible = false;
+            this.header.label = "";
+            this.activityManager.getCurrentPage().setPageMainObject(this.header);
+            let errorMessage:
+                string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+        return Promise.resolve();
+    }
+
+
+    /**
+     * Reatrive FormFlow
+     * @param flowid
+     * @param versionid
+     * @param starterParams
+     */
+    getFlow(flowid, versionid, starterParams, popupMessage?: string) {
+    this.flowConfigurationService.retriveFormFlowByFlowVersion(flowid, versionid).then(response => {
+        if (response.success) {
+            this.fmFlow = response.opTargetObject.items[0];
+            starterParams.editItem.flow = this.fmFlow;
+            starterParams.popupHeight = '700px';
+            starterParams.popupWidth = '1300px';
+
+            this.openDialog(starterParams, popupMessage);
+        }
+    });
+
+    return Promise.resolve();
+}
+
+    /**
+     * Event changeStatus "Consolida"
+     * @param element
+     * @param e
+     */
+    changeStatus(element, e) {
+
+        if (element.consolidata == true) {
+            const dialogRef = this.dialog.open(DialogContentExampleDialog, {
+                data: {
+                    header: "Annulla consolidamento",
+                    text: "Sicuro di voler annullare il consolidamento dell'estrazione " + element.id + " ?",
+                    b1: "Si",
+                    b2: "Cancel"
+                }
+            });
+
+            dialogRef.afterClosed().subscribe(result => {
+                if (result == true) {
+                    this.sconsolida(element);
+                }
+            });
+        } else {
+            const dialogRef = this.dialog.open(DialogContentExampleDialog, {
+                data: {
+                    header: "Consolidamento",
+                    text: "Sicuro di voler consolidare l'estrazione " + element.id + " ?",
+                    b1: "Si",
+                    b2: "Cancel"
+                }
+            });
+
+            dialogRef.afterClosed().subscribe(result => {
+                if (result == true) {
+                    this.consolida(element);
+                }
+            });
+        }
+	}
+
+    /**
+     * setLastVersion
+     * alla selezione del flusso setta l'ultima versione
+     */
+    setLastVersion(flowId) {
+        this.flow_id = flowId;
+        this.retrieveLastVersionByFlow(flowId);
+    }
+
+    /**
+     * RetriveFlow
+     * Retrive Object FlowDTO
+     */
+    retrieveFlow() {
+        this.flowConfigurationService.searchFlowExtr().then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    this.flows = response.opTargetObject.items;
+                }
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+        return Promise.resolve();
+    }
+
+    onFlowChange(flowId: string) {
+        this.flow_id = flowId;
+
+        // ✅ Reset combo Versioni
+        this.version_id = "";
+        this.versions = [];
+
+        // ✅ Chiamo il BE per ricaricare le versioni filtrate
+        this.flowConfigurationService.getAllVersion(flowId).then(response => {
+            if (response.success && !response.opTargetObject.error) {
+
+                // ✅ Popolo la combo Versioni
+                this.versions = response.opTargetObject.items || [];
+
+                // ✅ Dopo aver caricato le versioni, rilancio la ricerca
+                this.startSearch();
+            } else {
+                // In caso di errore, reset pulito
+                this.versions = [];
+                this.startSearch();
+            }
+        });
+    }
+
+    /**
+     * RetriveFlow
+     * Retrive Object FlowDTO
+     */
+    retrieveVersion() {
+        this.flowConfigurationService.getAllVersion(null).then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    this.versions = response.opTargetObject.items;
+                }
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+        return Promise.resolve();
+    }
+
+    /**
+     * RetrieveLastVersionByFlow
+     * Recupera l'ultima versione per un determinato flow ID
+     */
+    retrieveLastVersionByFlow(flowId: any) {
+        this.flowConfigurationService.getFlowWithLastVersion(null, flowId).then(response => {
+            if (response.success) {
+                if (response.opTargetObject.error) {
+                    //this.manageError(response.opTargetObject.error);
+                } else {
+                    this.version_id = response.opTargetObject.version;
+                    //this.startSearch(this.flow_id,this.version_id,null,null,null);
+                }
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+        return Promise.resolve();
+    }
+
+
+    /**
+     * retrieveExtraction
+     * Retrive Object ExtractionDTO
+     */
+    //retrieveExtraction(flow?: any, version?: any, extraction?: any, status?: any, schedulingType?: any) {
+    retrieveExtraction(filterGlob, silentRefresh: boolean) {
+        if (!silentRefresh) {
+            this.showLoadingIndicator = true;
+        }
+
+        this.flowConfigurationService.getExportingRequest(filterGlob).then(response => {
+            if (response.success && !response.opTargetObject.error) {
+
+            const newItems = response.opTargetObject.items;
+
+            // Primo caricamento
+            if (!this.dataSource || !this.dataSource.data || this.dataSource.data.length === 0) {
+                this.dataSource = new MatTableDataSource(newItems);
+            } else {
+                const currentData = this.dataSource.data;
+                let changed = false;
+
+                // 🔁 Aggiornamento incrementale
+                newItems.forEach(newItem => {
+                const existingIndex = currentData.findIndex(c => c.id === newItem.id);
+                if (existingIndex >= 0) {
+                    const oldItem = currentData[existingIndex];
+
+                    // confronta solo campi sensibili (ottimizzato)
+                    if (
+                    oldItem.status !== newItem.status ||
+                    oldItem.validationStatus !== newItem.validationStatus ||
+                    oldItem.regionValidationStatus !== newItem.regionValidationStatus ||
+                    oldItem.record !== newItem.record ||
+                    oldItem.startExtractionDate !== newItem.startExtractionDate ||
+                    oldItem.endExtractionDate !== newItem.endExtractionDate
+                    ) {
+                    currentData[existingIndex] = { ...oldItem, ...newItem };
+                    changed = true;
+                    }
+                } else {
+                    // nuovo elemento (aggiunto in testa)
+                    currentData.unshift(newItem);
+                    changed = true;
+                }
+                });
+
+                // Rimuovi righe non più presenti
+                const updatedData = currentData.filter(c => newItems.find(n => n.id === c.id));
+                if (updatedData.length !== currentData.length) {
+                changed = true;
+                }
+
+                // aggiorna solo se necessario
+                if (changed) {
+                this.dataSource.data = [...updatedData];
+                }
+            }
+
+            this.totalItems = response.opTargetObject.totalItems;
+
+            } else {
+            const errorMessage = this.activityManager.engApplication.i18nInstant('ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+
+            if (!silentRefresh) {
+            this.showLoadingIndicator = false;
+            }
+
+        }).catch(() => {
+            if (!silentRefresh) {
+            this.showLoadingIndicator = false;
+            }
+            const errorMessage = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+        return Promise.resolve();
+        }
+
+    /**
+     *
+     * @param flow
+     * @param version
+     */
+    retriveFormFlowAndGoToView(element: any) {
+        this.showLoadingIndicator = true;
+        if(element.flow.code === 'SDO_XL') {
+            let startingParams: any = {};
+            startingParams.search = true;
+            startingParams.idEstrazione = element.id;
+            this.activityManager.startChildActivityByName("sdo-flow-monitor", startingParams);
+        } else {
+            this.flowConfigurationService.getFmFlowByFlowAzienda(element.flow.id, element.version.id).then(response => {
+                if (response.success) {
+                    if (response.opTargetObject.error) {
+                        //this.manageError(response.opTargetObject.error);
+                    } else {
+                        this.formFlow = null;
+                        let startingParams: any = {};
+                        this.formFlow = response.opTargetObject;
+                        startingParams.editItem = this.formFlow;
+                        startingParams.editItem.extra = element.id;
+                        // this.sub.unsubscribe();
+                        this.activityManager.getCurrentPage().setPageMainObject(startingParams);
+                        this.activityManager.startChildActivityByName("flow-view.edit", startingParams);
+                    }
+                } else {
+                    let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                    this.activityManager.engApplication.notifyMessage(errorMessage);
+                }
+                this.showLoadingIndicator = false;
+            }).catch(() => {
+                this.showLoadingIndicator = false;
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            });
+        }
+    }
+
+
+    /**
+     * Start Extraction Row
+     * @param element
+     */
+    startExtraction(element: any): Promise<any> {
+        var _this = this;
+        var i18n = this.activity.getI18nService();
+        return this.activity.getUserConfirmService().askConfirmMessage
+        (i18n.instant('!i18n# Avviare esportazione'), i18n.instant('!i18n# Confermi avvio esportazione?')).then(function () {
+            return _this.executeExtractionConfirm(element);
+        });
+    }
+
+    /**
+     * Download XML Extraction
+     * @param element
+     */
+    downloadXML(element) {
+        this.header.label = "Download XML in corso...";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+        this.flowConfigurationService.downloadExportXML(element.id).then(result => {
+            if (result.size > 0) {
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+                var file = new Blob([result], {type: 'application/zip'});
+                var fileURL = URL.createObjectURL(file);
+                var anchor = document.createElement("a");
+                anchor.download = element.id + "_" + element.flow.name;
+                anchor.href = fileURL;
+                anchor.click();
+            } else {
+                this.activityManager.engApplication.notifyMessage('Nessun File trovato');
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+            }
+        }).catch(() => {
+            this.header.visible = false;
+            this.header.label = "";
+            this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+     
+        });
+
+
+    }
+ 
+    downloadFlow(element) {
+        this.header.label = "Simulazione flusso "+element.flow.name+" in corso...";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+        this.flowConfigurationService.downloadSimulation(element.id,element.flow.code).then(result => {
+            var file = new Blob([result.body], {type: 'application/zip'});
+            if(result.headers.get("filename") == "ERRORE"){
+                const text = result.headers.get("erroreRegionale")
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+                this.choices = [];
+                this.choices.push(this.choice);
+                this.activity.getUserConfirmService().askChooseOneMessage(this.choices, 'Attenzione', text)
+                    .then(function () {
+                            return;
+                        }
+                    );
+                // this.activityManager.engApplication.notifyMessage(text);
+            }else{
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+                var fileURL = URL.createObjectURL(file);
+                var anchor = document.createElement("a");
+                anchor.download = element.id + "_" + element.flow.name + "_SIMULAZIONEFLUSSO";
+                anchor.href = fileURL;
+                anchor.click();
+             }
+        }).catch(() => {
+            this.header.visible = false;
+            this.header.label = "";
+            this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+     
+        });
+
+
+    }
+
+    goToViewDrg(element){
+
+      let starterParams: any = this.activity.startingParams;    
+      starterParams.editItem = element;
+      this.activity.startingParams.popupHeight = '700px';
+      this.activity.startingParams.popupWidth = '1300px';
+      this.activityManager.startChildPopupActivityByName("flow-drg.edit", starterParams);
+    }
+
+
+    simulateFlow(element) {
+        
+        this.header.label = "Calcolo DRG in corso...";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+
+        //result.opTargetObject = true;
+        this.flowConfigurationService.simulateFlowDrg(element.id,element.flow.code).then(response => {
+            if (response.success) {
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('Simulazione effettuata con successo');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+
+            } else {
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('Operazione fallita -- Contattare assistenza');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+                
+            }
+        }).catch(() => {
+            this.header.visible = false;
+            this.header.label = "";
+            this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+     
+        });
+
+        return Promise.resolve();
+
+
+    }
+
+    /**
+     * Download LOG Extraction
+     * @param element
+     */
+    downloadLOG(element) {
+        this.header.label = "Download LOG in corso...";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+        this.flowConfigurationService.downloadExportLOG(element.id).then(result => {
+            if (result.size > 0) {
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+                var file = new Blob([result], {type: 'application/zip'});
+                var fileURL = URL.createObjectURL(file);
+                var anchor = document.createElement("a");
+                anchor.download = element.id + "_" + element.flow.name + "_Log";
+                anchor.href = fileURL;
+                anchor.click();
+
+            } else {
+                this.activityManager.engApplication.notifyMessage('Nessun File trovato');
+                this.header.visible = false;
+                this.header.label = "";
+                this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+            }
+        }).catch(() => {
+            this.header.visible = false;
+            this.header.label = "";
+            this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+     
+        });
+
+
+    }
+
+    executeExtractionConfirm(element: any): Promise<any> {
+        this.showLoadingIndicator = true;
+        this.flowConfigurationService.startExtraction(element).then(response => {
+            if (response.success) {
+                this.showLoadingIndicator = false;
+                let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Esportazione avviata con successo');
+                this.activityManager.engApplication.notifyMessage(successMessage);
+                //this.searchComponent.refreshSearch();
+                //this.ngOnInit();
+                let extractionChanged = response.opTargetObject;
+                for (let j = 0; j < this.dataSource.data.length; j++) {
+                    if (extractionChanged.id == this.dataSource.data[j].id) {
+                        this.dataSource.data[j].record = extractionChanged.record;
+                        this.dataSource.data[j].status = extractionChanged.status;
+                        this.dataSource.data[j].startExtractionDate = extractionChanged.startExtractionDate;
+                        this.dataSource.data[j].endExtractionDate = extractionChanged.endExtractionDate;
+                        this.dataSource.data[j].validationStatus = extractionChanged.validationStatus;
+                        this.dataSource.data[j].regionValidationStatus = extractionChanged.regionValidationStatus;
+                        break;
+                    }
+                }
+            } else {
+                this.showLoadingIndicator = false;
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+        }).catch(() => {
+            this.showLoadingIndicator = false;
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+        return Promise.resolve();
+    }
+
+
+    //TEST PAGIN
+
+    getServerData($event) {
+        this.filterGlob.limit = $event.pageSize;
+        this.filterGlob.offset = $event.pageIndex * $event.pageSize;
+        this.retrieveExtraction(this.filterGlob, false);
+        //this.retrieveExtraction();
+
+    }
+
+    sortData($event) {
+        this.filterGlob["sortfield"] = $event.active;
+        this.filterGlob["sort"] = $event.direction.toUpperCase();
+        this.retrieveExtraction(this.filterGlob, false);
+    }
+
+    convertData(data): string {
+        if (data != null) {
+            let myMoment = moment(data);
+            return myMoment.format('D/MM/YYYY HH:mm');
+        } else
+            return "";
+    }
+
+    //Dragover listener
+    @HostListener('dragover', ['$event']) onDragOver(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        // this.background = '#9ecbec';
+        this.opacity = '0.8'
+    }
+
+    //Dragleave listener
+    @HostListener('dragleave', ['$event'])
+    public onDragLeave(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        //this.background = '#f5fcff'
+        this.opacity = '1'
+    }
+
+    //Drop listener
+    @HostListener('drop', ['$event'])
+    public ondrop(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        //this.background = '#f5fcff'
+        this.opacity = '1'
+        let files = evt.dataTransfer.files;
+        if (files.length > 0) {
+            this.onFileDropped.emit(files)
+        }
+    }
+
+    allowDrop(ev) {
+        ev.preventDefault();
+    }
+
+    uploadReturns(el, extractionId: string) {
+        let inputFile = el.files[0];
+        el.value = '';
+        this.readFile(inputFile).then((file) => {
+
+            this.file = [file];
+            this.files = [file.name];
+
+            let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# File caricato');
+            this.activityManager.engApplication.notifyMessage(successMessage);
+
+            // let el: HTMLElement = document.getElementById('uploadReturnsInput');
+            // el.nodeValue = undefined;
+
+            this.saveFile(file, extractionId);
+        });
+    }
+
+    readFile(inputFile: any): Promise<{
+        name: string;
+        size: number;
+        type: string;
+        content: any
+    }> {
+        let deferred = Promises.defer<any>()
+        var reader = new FileReader();
+        reader.onload = (onLoadEvent) => {
+            var arrayBuffer = onLoadEvent.target['result'];
+            console.log("on Load ", onLoadEvent);
+            deferred.resolve({
+                name: inputFile.name,
+                size: inputFile.size,
+                type: inputFile.type,
+                content: arrayBuffer
+            });
+        };
+        reader.onprogress = (progressEvent) => {
+            console.log("onprogress ", progressEvent)
+        };
+        reader.readAsArrayBuffer(inputFile);
+        return deferred.promise;
+    }
+
+    saveFile(file: any, extractionId: string){
+        this.showLoadingIndicator = true;
+
+        this.flowConfigurationService.saveReturnsFiles(file, extractionId).then(response => {
+            this.showLoadingIndicator = false;
+
+            let result: any = response.opTargetObject;
+
+            if (result.success) {
+				this.startSearch();
+                let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Upload avvenuto con successo');
+                this.activityManager.engApplication.notifyMessage(successMessage);
+            } else {
+
+                if (result.downloadBase64) {
+                    this.downloadReturnsErrorLog(result);
+                }
+
+                this.choices = [];
+                this.choices.push(this.choice);
+                this.activity.getUserConfirmService()
+                    .askChooseOneMessage(this.choices, 'Attenzione', result.message)
+                    .then(function () {
+                        return;
+                    });
+            }
+        }).catch((e) => {
+            this.showLoadingIndicator = false;
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+    }
+
+    private downloadReturnsErrorLog(result: any) {
+        this.header.visible = false;
+        this.header.label = "";
+        this.activityManager.getCurrentPage().setPageMainObject(this.header);
+
+        if (result && result.downloadBase64) {
+            const byteCharacters = atob(result.downloadBase64);
+            const byteNumbers = new Array(byteCharacters.length);
+
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+
+            const byteArray = new Uint8Array(byteNumbers);
+            const file = new Blob(
+                [byteArray],
+                { type: result.downloadContentType || 'application/zip' }
+            );
+
+            const fileURL = URL.createObjectURL(file);
+            const anchor = document.createElement("a");
+            anchor.download = result.downloadFileName || "Errori_Upload_Ritorno.zip";
+            anchor.href = fileURL;
+            anchor.click();
+            URL.revokeObjectURL(fileURL);
+        }
+    }
+
+    // checkChangeStatus(){
+    //     let filter: SearchFilters = new SearchFilters();
+    //     filter["status"] = "IN_CORSO";
+    //     this.flowConfigurationService.getExportingRequest(filter).then(response => {
+    //         if (response.success) {
+    //             if(this.checkCount){
+    //             let k = response.opTargetObject;
+    //             this.checkCount = false;
+    //             }
+    //         }
+    //         else {
+    //         }
+    //     }).catch((e) => {
+    //     });
+    //     return Promise.resolve();
+    // }
+
+    openDialog(startingParams, popupMessage?: string) {
+        this.header.visible = false;
+        this.header.label = "";
+
+        const dialogRef = this.dialog.open(DialogContentExampleDialog, {
+            data: {
+                header: "Errore consolidamento",
+                text: popupMessage,
+                b1: "Ok",
+                b2: "Cancel"
+            }
+        });
+
+        dialogRef.afterClosed().subscribe(result => {
+            if (result == true) {
+                this.activityManager.checkStartChildPopupActivityByName("pratica-flow.edit", startingParams);
+            }
+        });
+    }
+
+    /*    /!** Whether the number of selected elements matches the total number of rows. *!/
+        isAllSelected() {
+            const numSelected = this.selection.selected.length;
+            const numRows = this.dataSource.data.length;
+            return numSelected === numRows;
+        }*/
+
+    /** Whether the number of selected elements matches the total number of rows. */
+    isAllSelected() {
+        const numSelected = this.selection.selected.length;
+        // const numRows = this.dataSource.data.data.length;
+
+        const numRowsMinusExcluded = this.dataSource.data
+            .filter(row => ((row.status != "IN_CORSO") && (!row.consolidata)))
+            .length;
+
+        return numSelected === numRowsMinusExcluded;
+    }
+
+    /** Selects all rows if they are not all selected; otherwise clear selection. */
+    masterToggle() {
+        this.isAllSelected() ?
+            this.selection.clear() :
+            // this.dataSource.data.forEach(row => this.selection.select(row));
+            this.dataSource.data.forEach(row => {
+                if ((row.status != "IN_CORSO")) {
+                    if ((!row.consolidata)) {
+                        this.selection.select(row);
+                    }
+                }
+            });
+    }
+
+    /** The label for the checkbox on the passed row */
+    checkboxLabel(row?: FlowExport): string {
+        if (!row) {
+            return `${this.isAllSelected() ? 'select' : 'deselect'} all`;
+        }
+        return `${this.selection.isSelected(row) ? 'deselect' : 'select'} row ${row.id}`;
+    }
+
+    deleteExtraction() {
+        const dialogRef = this.dialog.open(DialogContentExampleDialog, {
+            data: {
+                header: "Cancellazione Estrazioni",
+                text: "Stai cancellando " + this.selection.selected.length + " Estrazioni?",
+                b2: "Esci",
+                b1: "Continua"
+            }
+        });
+        dialogRef.afterClosed().subscribe(result => {
+            if (result == true) {
+                this.showLoadingIndicator = true;
+                this.flowConfigurationService.deleteRequestExport(this.selection.selected).then(response => {
+                    this.showLoadingIndicator = false;
+                    if (response.success) {
+                        let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Cancellati ' + this.selection.selected.length + ' Record con successo');
+                        this.activityManager.engApplication.notifyMessage(successMessage);
+                        this.resetSearch();
+                    } else {
+                        this.choices = [];
+                        this.choices.push(this.choice);
+                        this.activity.getUserConfirmService().askChooseOneMessage(this.choices, 'Attenzione', result.message)
+                            .then(function () {
+                                    return;
+                                }
+                            );
+                    }
+                }).catch((e) => {
+                    this.showLoadingIndicator = false;
+                    let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+                    this.activityManager.engApplication.notifyMessage(errorMessage);
+                });
+                return Promise.resolve();
+            }
+        });
+    }
+
+
+    statusIcon(elementStatus: string) {
+
+        if (elementStatus == "ANNULLATA") {
+            //return "highlight_off"
+            return ""
+        }
+
+        if (elementStatus == "IN_CORSO") {
+            return "autorenew"
+        }
+
+        if (elementStatus == "TERMINATA_KO") {
+            return "error"
+        }
+        if (elementStatus == "TERMINATA_OK") {
+            return "check_circle"
+        }
+
+        if (elementStatus == "RICHIESTA") {
+            return "send"
+        }
+
+
+    }
+
+    statusTooltip(elementStatus: string) {
+        if (elementStatus == "ANNULLATA") {
+            //return "Annullata"
+            return ""
+        }
+
+        if (elementStatus == "IN_CORSO") {
+            return "In corso"
+        }
+
+        if (elementStatus == "TERMINATA_KO") {
+            return "Estrazione non conclusa correttamente"
+        }
+        if (elementStatus == "TERMINATA_OK") {
+            return "Estrazione conclusa correttamente"
+        }
+
+        if (elementStatus == "RICHIESTA") {
+            return "Richiesta di estrazione inserita"
+        }
+    }
+
+    validationStatusIcon(elementValidationStatus: string) {
+
+        if (elementValidationStatus == "VALIDATED") {
+            return "done_all";
+        }
+        if (elementValidationStatus == "XSD_VALIDATED") {
+            return "done";
+        }
+
+        if (elementValidationStatus == "NOT_VALID") {
+            return "report_problem";
+        }
+
+        if (elementValidationStatus == "NOT_VALIDATED") {
+            return "block";
+        }
+
+        if (elementValidationStatus == "UNVALIDABLE") {
+            return "error";
+        }
+
+
+    }
+
+    validationStatusIconDrl(elementValidationStatus: string) {
+
+        if (elementValidationStatus == "VALIDATED") {
+            return "done";
+        } else if (elementValidationStatus == "NOT_VALIDATED") {
+            return "warning";
+        } else if (elementValidationStatus == "UNVALIDABLE") {
+            return "error";
+        } else {
+            return "access_time";
+        }
+
+
+    }
+
+    validationStatusTooltip(elementValidationStatus: string) {
+        if (elementValidationStatus == "VALIDATED") {
+            return "Validazione completata";
+        }
+        if (elementValidationStatus == "XSD_VALIDATED") {
+            return "XML valido";
+        }
+
+        if (elementValidationStatus == "NOT_VALID") {
+            return "XML non valido";
+        }
+
+        if (elementValidationStatus == "NOT_VALIDATED") {
+            return "Errori in fase di validazione";
+        }
+
+        if (elementValidationStatus == "UNVALIDABLE") {
+            return "Non validabile";
+        }
+
+    }
+
+    validationStatusTooltipDrl(elementValidationStatus: string) {
+        if (elementValidationStatus == "VALIDATED") {
+            return "Validazione completata";
+        } else if (elementValidationStatus == "NOT_VALIDATED") {
+            return "Nessun record da validare";
+        } else if (elementValidationStatus == "UNVALIDABLE") {
+            return "Validazione fallita";
+        } else {
+            return "Estrazione da validare";
+        }
+
+    }
+
+    schedulationIcon(schedulingType: string) {
+
+        if (schedulingType == "MANUALLY") {
+            return "build";
+        }
+        if (schedulingType == "ONE_TIME") {
+            return "repeat_one";
+        }
+
+        if (schedulingType == "PERIODICALLY") {
+            return "schedule";
+        }
+
+    }
+
+    schedulationTootlip(schedulingType: string) {
+
+        if (schedulingType == "MANUALLY") {
+            return "Manuale";
+        }
+        if (schedulingType == "ONE_TIME") {
+            return "Una volta";
+        }
+
+        if (schedulingType == "PERIODICALLY") {
+            return "Periodico";
+        }
+
+    }
+
+    regionValidationStatusTooltip(element: any) {
+        let elementValidationStatus : string = element.regionValidationStatus;
+        let lastUploadReturnsRequest : any = element.lastUploadReturnsRequest;
+        let msgValStatusTooltip: string = "";
+        let tipoValidazioneReg: string = "DEFINITIVA";
+
+        if (lastUploadReturnsRequest != null) {
+            if (lastUploadReturnsRequest.tipoValidazioneReg!=null) {
+                tipoValidazioneReg=lastUploadReturnsRequest.tipoValidazioneReg;
+            }
+        }
+
+        if (elementValidationStatus == "SCARTO") {
+            msgValStatusTooltip = "Validazione "+tipoValidazioneReg+" completata con record scartati";
+        } else if (elementValidationStatus == "SEGNALAZIONE") {
+            msgValStatusTooltip =  "Validazione "+tipoValidazioneReg+" completata con record segnalati";
+        } else if (elementValidationStatus == "VALIDO") {
+            msgValStatusTooltip =  "Validazione "+tipoValidazioneReg+" completata senza segnalazioni";
+        } else {
+            return  "Ritorni regionali non caricati";
+        }
+        
+        msgValStatusTooltip = msgValStatusTooltip + " - Ultima Validazione del " + this.convertData(lastUploadReturnsRequest.creationDate);
+
+        return msgValStatusTooltip;
+    }
+
+    regionValidationStatusIcon(element: any) {
+        let elementValidationStatus : string = element.regionValidationStatus;
+        let lastUploadReturnsRequest : any = element.lastUploadReturnsRequest;
+        let msgValStatusIcon: string = "access_time";
+        if (lastUploadReturnsRequest==null || (lastUploadReturnsRequest!=null && lastUploadReturnsRequest.tipoValidazioneReg=="DEFINITIVA") || (lastUploadReturnsRequest!=null && lastUploadReturnsRequest.tipoValidazioneReg==null)) {
+            if (elementValidationStatus == "SCARTO") {
+                msgValStatusIcon = "error";
+            } else if(elementValidationStatus == "SEGNALAZIONE") {
+                msgValStatusIcon = "warning";
+            } else if (elementValidationStatus == "VALIDO") {
+                msgValStatusIcon = "done";
+            }
+        } else if ((lastUploadReturnsRequest!=null && lastUploadReturnsRequest.tipoValidazioneReg=="PROVVISORIA")) {
+            msgValStatusIcon = "timelapse";
+        }
+        
+        return msgValStatusIcon;
+    }
+
+    checkTypeValidationToGoDashboard(elementValidationStatus: string) {
+        let typeValidationError: string = "";
+        typeValidationError=elementValidationStatus;
+        if (typeValidationError=="VALIDO") {
+            typeValidationError="";
+        }
+        
+        return typeValidationError;
+    }
+
+    errorDetails(flowErrorDetails: any) {
+
+        if (flowErrorDetails == undefined || flowErrorDetails == null) {
+            return "0";
+        } else {
+            return flowErrorDetails.length;
+        }
+    }
+
+    showErrorDetails(details, status) {
+        if(status=="TERMINATA_KO"){
+            let message: string = "";
+            for (let i = 0; i < details.length; i++) {
+                details[i] = details[i] + ".";
+            }
+
+            const dialogRef = this.dialog.open(DialogContentExampleDialog, {
+
+                data: {
+                    header: "Errore Talend:",
+                    b1: "Ok",
+                    elem: details
+                }
+
+            });
+        }
+        // this.utils.messageError("!i18n# Errori Talend: ", "!i18n#" + message, this.activity);
+    }
+
+    killExtraction(element: any): Promise<any> {
+        var _this = this;
+        var i18n = this.activity.getI18nService();
+        return this.activity.getUserConfirmService().askConfirmMessage
+        (i18n.instant('!i18n# Stoppare esportazione'), i18n.instant('!i18n# Confermi di voler stoppare esportazione?')).then(function () {
+            return _this.killExtractionConfirm(element);
+        });
+    }
+
+    killExtractionConfirm(element: any): Promise<any> {
+        let id = element.id.replace('"', '');
+        this.flowConfigurationService.killExtraction(id).then(response => {
+            if (response.success) {
+                let successMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Esportazione stoppata con successo');
+                this.activityManager.engApplication.notifyMessage(successMessage);
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            }
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Errore Inaspettato');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+
+        return Promise.resolve();
+    }
+
+    getUser(element: any) {
+
+        this.flowConfigurationService.getUser(element.requester).then(response => {
+            if (response.success) {
+                
+        
+                const dialogRef = this.dialog.open(PopupUser, {
+                    data: {
+                        username: response.opTargetObject.username,
+                        surname: response.opTargetObject.surname,
+                        name: response.opTargetObject.name,
+                    }
+                });
+
+            } else {
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('!i18n# Utente non trovato');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+}
+        }).catch(() => {
+            let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+            this.activityManager.engApplication.notifyMessage(errorMessage);
+        });
+    }
+
+
+    isMonitorSDO(element:any):boolean {
+        return !!element && element.flow.code === 'SDO_XL';
+    }
+
+    isProfilConsol(element:any):boolean {
+        let permission: boolean = true;
+        if (element.flow !== undefined && element.flow !==null && element.flow.profiloFlussi !== undefined && element.flow.profiloFlussi !==null  && element.flow.profiloFlussi.length>0) {
+            for (let j = 0; j < element.flow.profiloFlussi.length; j++) {
+                if (element.flow.profiloFlussi[j].consolidamento !== undefined && element.flow.profiloFlussi[j].consolidamento !== null) {
+                    if (element.flow.profiloFlussi[j].consolidamento.toUpperCase()==='N' || element.flow.profiloFlussi[j].consolidamento.toUpperCase()==='NO' || element.flow.profiloFlussi[j].consolidamento.toUpperCase()==='0') {
+                        permission=false;   
+                        break;                 
+                    }      
+                }
+            }   
+        }
+        return permission;
+    }
+
+    loadTooltipConsol(element:any):String {
+        let tooltipConsol: String = "";
+        if (element.consolidata==true) {
+            if (element.consolidata == true && this.convertData(element.dateCons) && element.userCons) {
+                tooltipConsol='Consolidata il:' + this.convertData(element.dateCons).toString() + ' da:  ' + element.userCons.toString();
+                if (!this.isProfilConsol(element)) {
+                    tooltipConsol = tooltipConsol + ' - Utente non abilitato allo sconsolidamento in profilatura flussi'
+                }
+            }  else {
+                tooltipConsol= 'Sconsolida';
+            }
+        } else if ((element.consolidata==false || element.consolidata == null) && (element.drg == false || element.drg == null)) {
+            if (!this.isProfilConsol(element)) {
+                tooltipConsol = 'Utente non abilitato al consolidamento in profilatura flussi'
+            } else {
+                if (element.record>0) {
+                    if (element.status != 'TERMINATA_OK') {
+                        tooltipConsol= 'Estrazione non conclusa correttamente';
+                    } else {
+                        tooltipConsol= 'Consolida';
+                    }
+                } else {
+                    tooltipConsol= 'Nessuna pratica estratta';
+                }
+            }
+        }
+        return tooltipConsol;
+    }
+
+    getToolTipFilter(row):string {
+        let toolTip = "";
+        if (row !== null && row !== undefined 
+            && row.flowConfigurationFilters !== null && row.flowConfigurationFilters !== undefined 
+            && row.flowConfigurationFilters[0] !== null && row.flowConfigurationFilters[0] !== undefined 
+            && row.flowConfigurationFilters[0].fields !== null && row.flowConfigurationFilters[0].fields !== undefined 
+            && row.flowConfigurationFilterFieldValues !== null && row.flowConfigurationFilterFieldValues !== undefined) {
+        let filterFields = row.flowConfigurationFilters[0].fields;
+        let filterValues = row.flowConfigurationFilterFieldValues;
+        filterFields.forEach(field => {
+            field.forEach(f => {
+            let id = f.id;
+            let range = f.range;
+            let filterType = f.filterType;
+
+            let dateFrom = null;
+            let dateTo = null;
+            let text = null;
+            let numericFrom = null;
+            let numericTo = null;
+            let combo = null;
+            let radio = null;
+            let multi: any[] = [];
+            let campi = null;
+            let lookup = null;
+            let chips: any[] = [];
+            
+            filterValues.forEach(value => {
+                if (id === value.filterId) {
+
+                    switch(filterType) { 
+                        case "Date": { 
+                            if (range === false) {
+                                dateFrom = value.dateFromValue;
+                            } else {
+                                if (dateFrom === null) {
+                                    dateFrom = value.dateFromValue;
+                                } 
+                                if (dateTo === null) {
+                                    dateTo = value.dateToValue;
+                                } 
+                            } 
+                           break; 
+                        } 
+                        case "Text": { 
+                            text = value.singleValue;
+                           break; 
+                        } 
+                        case "Numeric": { 
+                            if (range === false) {
+                                numericFrom = value.numFromValue;
+                            } else {
+                                if (dateFrom === null) {
+                                    numericFrom = value.numFromValue;
+                                } 
+                                if (dateTo === null) {
+                                    numericTo = value.numToValue;
+                                } 
+                            }  
+                            break; 
+                         } 
+                         case "ComboBox": { 
+                            combo = value.singleValue;
+                            break; 
+                         } 
+                         case "Radio": { 
+                            radio = value.singleValue; 
+                            break; 
+                         } 
+                         case "Multi": { 
+                            multi = value.multiValues; 
+                            break; 
+                         } 
+                         case "Campi": { 
+                            campi = value.singleValue; 
+                            break; 
+                         } 
+                         case "Lookup": { 
+                            lookup = value.singleValue; 
+                            break; 
+                         } 
+                         case "Chips": { 
+                            chips = value.multiValues; 
+                            break; 
+                         } 
+                        default: { 
+                           break; 
+                        } 
+                     } 
+                }
+            });
+
+            toolTip  = toolTip + f.name + ": ";
+
+            switch(filterType) { 
+                case "Date": { 
+                    if (range === true) {
+                        if (dateFrom !== null) {
+                            let myMoment = moment(dateFrom);
+                            toolTip  = toolTip + " Dal " + myMoment.format('DD/MM/YYYY'); 
+                        } 
+                        if (dateTo !== null) {
+                            let myMoment = moment(dateTo);
+                            toolTip  = toolTip + " Al " + myMoment.format('DD/MM/YYYY'); 
+                        } 
+                    } else {
+                        toolTip  = toolTip + dateFrom; 
+                    }
+                   break; 
+                } 
+                case "Text": { 
+                    if (text !== null) {
+                        toolTip  = toolTip + text;
+                    }
+                   break; 
+                } 
+                case "Numeric": { 
+                    if (range === true) {
+                        if (numericFrom !== null) {
+                            toolTip  = toolTip + " Da " + numericFrom; 
+                        } 
+                        if (numericTo !== null) {
+                            toolTip  = toolTip + " A " + numericTo; 
+                        } 
+                    } else {
+                        toolTip  = toolTip + numericFrom; 
+                    }
+                    break; 
+                 } 
+                 case "ComboBox": { 
+                    if (combo !== null) {
+                        toolTip  = toolTip + combo;
+                    }
+                    break; 
+                 } 
+                 case "Radio": { 
+                    if (radio !== null) {
+                        toolTip  = toolTip + radio;
+                    }
+                    break; 
+                 } 
+                 case "Multi": { 
+                    if (multi !== null && multi !== undefined && multi.length >0) {
+                        let count = 0;
+                        multi.forEach(value => {
+                            if (count > 0) {
+                                toolTip  = toolTip + ', ';
+                            }
+                            toolTip  = toolTip + value;
+                            count = count + 1;
+                        });
+                    }
+                    break; 
+                 } 
+                 case "Campi": { 
+                    if (campi !== null) {
+                        toolTip  = toolTip + campi;
+                    }
+                    break; 
+                 } 
+                 case "Lookup": { 
+                    if (lookup !== null) {
+                        toolTip  = toolTip + lookup;
+                    }
+                    break; 
+                 } 
+                 case "Chips": { 
+                    if (chips !== null && chips !== undefined && chips.length >0) {
+                        let count = 0;
+                        chips.forEach(value => {
+                            if (count > 0) {
+                                toolTip  = toolTip + ', ';
+                            }
+                            toolTip  = toolTip + value;
+                            count = count + 1;
+                        });
+                    } 
+                 } 
+                default: { 
+                   break; 
+                } 
+            }
+
+            toolTip  = toolTip + " <br>";
+        });
+        });
+    }
+        return toolTip;
+    }
+
+    /**
+     * Button goDashboardActivity
+     * @param element
+     */
+    goDashboardActivity(element: any) {
+        this.dashBoard(element);
+    }
+    /**
+     *
+     * @param flow
+     * @param version
+     */
+    dashBoard(element: any): void {
+        let startingParams: any = {};
+        let typeValidation:string = this.checkTypeValidationToGoDashboard(element.regionValidationStatus);
+        if (typeValidation!="" && typeValidation!=null) {
+            this.showLoadingIndicator = true;
+            this.flowConfigurationService.getFlowWithLastVersion(null, element.flow.id).then(response => {
+                if (response.success) {
+                    if (response.opTargetObject.error) {
+                        //this.manageError(response.opTargetObject.error);
+                    } else {
+                        this.formFlow = null;
+                        let startingParams: any = {};
+                        this.formFlow = response.opTargetObject;
+                        startingParams.editItem = this.formFlow;
+                        startingParams.editItem.extra = element.id;
+                        startingParams.extractionIdFromGrid = element.id;
+                        if (typeValidation=="SCARTO") {
+                            startingParams.region = "PRATICHE_ERRATE_REG";
+                            startingParams.editItem.extra = "pratiche_error";
+                        } else if(typeValidation=="SEGNALAZIONE") {
+                            startingParams.region = "PRATICHE_SEGNALAZIONI_REG";
+                            startingParams.editItem.extra = "pratiche_error";
+                        } 
+                        if (startingParams.region!=null) {
+                            this.activityManager.startChildActivityByName("pratica-flow.edit", startingParams);
+                        }
+                    }
+                    this.showLoadingIndicator = false;
+                } else {
+                    this.showLoadingIndicator = false;
+                    let errorMessage: string = this.activityManager.engApplication.i18nInstant('ERR');
+                    this.activityManager.engApplication.notifyMessage(errorMessage);
+                }
+            }).catch(() => {
+                this.showLoadingIndicator = false;
+                let errorMessage: string = this.activityManager.engApplication.i18nInstant('UNEXPECTED_ERR');
+                this.activityManager.engApplication.notifyMessage(errorMessage);
+            });
+        }
+    }
+
+}
